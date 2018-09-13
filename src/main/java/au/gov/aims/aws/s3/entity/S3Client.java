@@ -1,0 +1,105 @@
+/*
+ *  Copyright (C) 2018 Australian Institute of Marine Science
+ *
+ *  Contact: Gael Lafond <g.lafond@aims.gov.au>
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+package au.gov.aims.aws.s3.entity;
+
+import au.gov.aims.aws.s3.PropertiesLoader;
+import au.gov.aims.aws.s3.manager.DownloadManager;
+import au.gov.aims.aws.s3.manager.ListManager;
+import au.gov.aims.aws.s3.manager.UploadManager;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.AmazonS3URI;
+
+import java.io.Closeable;
+import java.io.File;
+import java.io.IOException;
+import java.security.InvalidParameterException;
+import java.util.Properties;
+
+public class S3Client implements Closeable {
+	private static final String AWS_ACCESS_KEY_PROPERTY = "AWS_ACCESS_KEY_ID";
+	private static final String AWS_SECRET_PROPERTY = "AWS_SECRET_ACCESS_KEY";
+
+	private AmazonS3 s3;
+
+	public static S3Client parse(File credentialsPropertiesFile) throws Exception {
+		return S3Client.parse(PropertiesLoader.load(credentialsPropertiesFile));
+	}
+
+	public static S3Client parse(Properties credentialsProperties) throws Exception {
+		if (!credentialsProperties.containsKey(AWS_ACCESS_KEY_PROPERTY)) {
+			throw new InvalidParameterException(
+				String.format("The credentials file doesn't contains the access key ID property.%n" +
+				 "Example: %s = AKIAIOSFODNN7EXAMPLE", AWS_ACCESS_KEY_PROPERTY)
+			);
+		}
+		if (!credentialsProperties.containsKey(AWS_SECRET_PROPERTY)) {
+			throw new InvalidParameterException(
+				String.format("The credentials file doesn't contains the secret access key property.%n" +
+				 "Example: %s = wJalrXUtnFEMIK7MDENGbPxRfiCYEXAMPLEKEY", AWS_SECRET_PROPERTY)
+			);
+		}
+
+		return new S3Client(
+			credentialsProperties.getProperty(AWS_ACCESS_KEY_PROPERTY),
+			credentialsProperties.getProperty(AWS_SECRET_PROPERTY));
+	}
+
+	public S3Client(String accessKeyId, String secretAccessKey) {
+		BasicAWSCredentials awsCredentials =
+				new BasicAWSCredentials(accessKeyId, secretAccessKey);
+
+		// Creates a "AmazonS3Client"
+		this.s3 = AmazonS3ClientBuilder.standard()
+				.withCredentials(new AWSStaticCredentialsProvider(awsCredentials))
+				.build();
+	}
+
+	public S3Client(AmazonS3 s3) {
+		this.s3 = s3;
+	}
+
+	public AmazonS3 getS3() {
+		return this.s3;
+	}
+
+	public S3List ls(String s3UriStr) {
+		return ListManager.ls(this, new AmazonS3URI(s3UriStr));
+	}
+
+	public S3List ls(AmazonS3URI s3Uri) {
+		return ListManager.ls(this, s3Uri);
+	}
+
+	public S3List upload(File sourceFile, AmazonS3URI destination) throws IOException, InterruptedException {
+		return UploadManager.upload(this, sourceFile, destination);
+	}
+
+	public S3List download(AmazonS3URI source, File destinationFile) throws IOException {
+		return DownloadManager.download(this, source, destinationFile);
+	}
+
+
+	@Override
+	public void close() throws IOException {
+		this.s3.shutdown();
+	}
+}

@@ -1,0 +1,4 @@
+.idea
+*.iml
+target
+src/test/resources/aws-credentials.properties
