@@ -19,6 +19,7 @@
 package au.gov.aims.aws.s3.manager;
 
 import au.gov.aims.aws.s3.S3TestBase;
+import au.gov.aims.aws.s3.S3Utils;
 import au.gov.aims.aws.s3.entity.S3Client;
 import au.gov.aims.aws.s3.entity.S3File;
 import au.gov.aims.aws.s3.entity.S3List;
@@ -42,7 +43,9 @@ public class ListManagerTest extends S3TestBase {
 	@Test
 	public void testLs() throws Exception {
 		try (S3Client client = super.openS3Client()) {
-			AmazonS3URI s3Uri = new AmazonS3URI("s3://" + S3TestBase.S3_BUCKET_ID + "/bin/");
+			super.setupBucket(client);
+
+			AmazonS3URI s3Uri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "/bin/");
 			S3List s3List = ListManager.ls(client, s3Uri);
 			LOGGER.info(s3List);
 

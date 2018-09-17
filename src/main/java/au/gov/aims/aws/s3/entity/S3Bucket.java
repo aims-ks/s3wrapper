@@ -19,14 +19,8 @@
 package au.gov.aims.aws.s3.entity;
 
 import au.gov.aims.aws.s3.S3Utils;
-import au.gov.aims.aws.s3.manager.BucketManager;
-import au.gov.aims.aws.s3.manager.DownloadManager;
-import au.gov.aims.aws.s3.manager.ListManager;
-import au.gov.aims.aws.s3.manager.UploadManager;
 import com.amazonaws.services.s3.AmazonS3URI;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.Date;
 
 public class S3Bucket {
@@ -36,7 +30,7 @@ public class S3Bucket {
 	private Long creationTime = null;
 
 	public S3Bucket(String bucketId) {
-		this.s3Uri = new AmazonS3URI("s3://" + bucketId);
+		this.s3Uri = S3Utils.getS3URI(bucketId);
 	}
 
 	public String getBucketId() {
@@ -64,10 +58,6 @@ public class S3Bucket {
 		}
 	}
 
-	public S3Bucket create(S3Client client) throws Exception {
-		return BucketManager.create(client, this.s3Uri);
-	}
-
 	public boolean isPublic(S3Client client) {
 		String bucketId = this.s3Uri.getBucket();
 
@@ -76,17 +66,5 @@ public class S3Bucket {
 		}
 
 		return S3Utils.isPublic(client.getS3().getBucketAcl(bucketId));
-	}
-
-	public S3List ls(S3Client client) {
-		return ListManager.ls(client, this.s3Uri);
-	}
-
-	public S3List upload(S3Client client, File sourceFile) throws IOException, InterruptedException {
-		return UploadManager.upload(client, sourceFile, this.s3Uri);
-	}
-
-	public S3List download(S3Client client, File destinationFile) throws IOException {
-		return DownloadManager.download(client, this.s3Uri, destinationFile);
 	}
 }

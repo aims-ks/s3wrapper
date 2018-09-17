@@ -20,6 +20,7 @@ package au.gov.aims.aws.s3.manager;
 
 import au.gov.aims.aws.s3.Md5;
 import au.gov.aims.aws.s3.S3TestBase;
+import au.gov.aims.aws.s3.S3Utils;
 import au.gov.aims.aws.s3.entity.S3Client;
 import au.gov.aims.aws.s3.entity.S3File;
 import au.gov.aims.aws.s3.entity.S3List;
@@ -46,7 +47,9 @@ public class DownloadManagerTest extends S3TestBase {
 	@Test(expected = AmazonS3Exception.class)
 	public void testDownloadFileNotFound() throws Exception {
 		try (S3Client client = super.openS3Client()) {
-			AmazonS3URI s3Uri = new AmazonS3URI("s3://" + S3TestBase.S3_BUCKET_ID + "/none-existing-folder/nope/this-file-does-not-exists.png");
+			super.setupBucket(client);
+
+			AmazonS3URI s3Uri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "/none-existing-folder/nope/this-file-does-not-exists.png");
 			DownloadManager.download(client, s3Uri, new File("/tmp/s3wrapper"));
 
 			Assert.fail("Downloading a non existing file must trigger an AmazonS3Exception.");
@@ -65,7 +68,9 @@ public class DownloadManagerTest extends S3TestBase {
 		File destinationFile = new File("/tmp/s3wrapper/random_100.bin");
 
 		try (S3Client client = super.openS3Client()) {
-			AmazonS3URI s3Uri = new AmazonS3URI("s3://" + S3TestBase.S3_BUCKET_ID + "/bin/random_100.bin");
+			super.setupBucket(client);
+
+			AmazonS3URI s3Uri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "/bin/random_100.bin");
 			S3List s3List = DownloadManager.download(client, s3Uri, destinationFile);
 			LOGGER.info(s3List);
 
@@ -114,7 +119,9 @@ public class DownloadManagerTest extends S3TestBase {
 		File destinationFolder = new File("/tmp/s3wrapper/random_star");
 
 		try (S3Client client = super.openS3Client()) {
-			AmazonS3URI s3Uri = new AmazonS3URI("s3://" + S3TestBase.S3_BUCKET_ID + "/bin/random_*.bin");
+			super.setupBucket(client);
+
+			AmazonS3URI s3Uri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "/bin/random_*.bin");
 			S3List s3List = DownloadManager.download(client, s3Uri, destinationFolder);
 			LOGGER.info(s3List);
 

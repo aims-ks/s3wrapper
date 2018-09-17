@@ -19,14 +19,10 @@
 package au.gov.aims.aws.s3.entity;
 
 import au.gov.aims.aws.s3.PropertiesLoader;
-import au.gov.aims.aws.s3.manager.DownloadManager;
-import au.gov.aims.aws.s3.manager.ListManager;
-import au.gov.aims.aws.s3.manager.UploadManager;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import com.amazonaws.services.s3.AmazonS3URI;
 
 import java.io.Closeable;
 import java.io.File;
@@ -80,23 +76,6 @@ public class S3Client implements Closeable {
 	public AmazonS3 getS3() {
 		return this.s3;
 	}
-
-	public S3List ls(String s3UriStr) {
-		return ListManager.ls(this, new AmazonS3URI(s3UriStr));
-	}
-
-	public S3List ls(AmazonS3URI s3Uri) {
-		return ListManager.ls(this, s3Uri);
-	}
-
-	public S3List upload(File sourceFile, AmazonS3URI destination) throws IOException, InterruptedException {
-		return UploadManager.upload(this, sourceFile, destination);
-	}
-
-	public S3List download(AmazonS3URI source, File destinationFile) throws IOException {
-		return DownloadManager.download(this, source, destinationFile);
-	}
-
 
 	@Override
 	public void close() throws IOException {

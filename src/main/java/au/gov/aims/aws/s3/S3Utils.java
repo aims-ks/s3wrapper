@@ -29,6 +29,57 @@ import java.util.regex.Pattern;
 
 public class S3Utils {
 
+	public static AmazonS3URI getS3URI(String bucketId) {
+		return S3Utils.getS3URI(bucketId, null);
+	}
+
+	public static AmazonS3URI getS3URI(String bucketId, String folder, String filename) {
+		if (bucketId == null || bucketId.isEmpty()) {
+			throw new IllegalArgumentException("Bucket ID muct not be null.");
+		}
+		if (bucketId.contains("/")) {
+			throw new IllegalArgumentException("Invalid Bucket ID: " + bucketId);
+		}
+
+		if (filename == null || filename.isEmpty()) {
+			return S3Utils.getS3URI(bucketId, folder);
+		}
+
+		if (folder == null || folder.isEmpty()) {
+			folder = "/";
+		}
+		if (!folder.startsWith("/")) {
+			folder = '/' + folder;
+		}
+		if (!folder.endsWith("/")) {
+			folder += '/';
+		}
+
+		return S3Utils.getS3URI(bucketId, folder + filename);
+	}
+
+	public static AmazonS3URI getS3URI(String bucketId, String filePath) {
+		if (bucketId == null || bucketId.isEmpty()) {
+			throw new IllegalArgumentException("Bucket ID muct not be null.");
+		}
+		if (bucketId.contains("/")) {
+			throw new IllegalArgumentException("Invalid Bucket ID: " + bucketId);
+		}
+
+		if (filePath == null || filePath.isEmpty()) {
+			filePath = "/";
+		}
+		if (!filePath.startsWith("/")) {
+			filePath = '/' + filePath;
+		}
+
+		// Collapse multiple successive occurrences of "/"
+		// Example: "//folder///file" => "/folder/file"
+		filePath = filePath.replaceAll("/{2,}", "/");
+
+		return new AmazonS3URI("s3://" + bucketId + filePath);
+	}
+
 	public static String getFilename(AmazonS3URI s3Uri) {
 		if (s3Uri == null) {
 			return null;
@@ -98,12 +149,7 @@ public class S3Utils {
 			parentKey = key.substring(0, lastSlashIdx + 1);
 		}
 
-		if (!parentKey.startsWith("/")) {
-			// Remove the trailing slash
-			parentKey = '/' + parentKey;
-		}
-
-		return new AmazonS3URI("s3://" + s3Uri.getBucket() + parentKey);
+		return S3Utils.getS3URI(s3Uri.getBucket(), parentKey);
 	}
 
 	public static boolean isPattern(String str) {

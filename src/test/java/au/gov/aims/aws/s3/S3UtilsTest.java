@@ -25,78 +25,129 @@ import org.junit.Test;
 public class S3UtilsTest {
 
 	@Test
+	public void testGetS3URI() {
+		AmazonS3URI s3Uri, expectedS3Uri;
+
+		s3Uri = S3Utils.getS3URI("mybucket");
+		expectedS3Uri = S3Utils.getS3URI("mybucket", "/");
+		Assert.assertEquals(expectedS3Uri, s3Uri);
+
+		s3Uri = S3Utils.getS3URI("mybucket", null);
+		expectedS3Uri = S3Utils.getS3URI("mybucket", "/");
+		Assert.assertEquals(expectedS3Uri, s3Uri);
+
+		s3Uri = S3Utils.getS3URI("mybucket", "");
+		expectedS3Uri = S3Utils.getS3URI("mybucket", "/");
+		Assert.assertEquals(expectedS3Uri, s3Uri);
+
+		s3Uri = S3Utils.getS3URI("mybucket", "/");
+		expectedS3Uri = S3Utils.getS3URI("mybucket", "/");
+		Assert.assertEquals(expectedS3Uri, s3Uri);
+
+		s3Uri = S3Utils.getS3URI("mybucket", "folder", "file");
+		expectedS3Uri = S3Utils.getS3URI("mybucket", "folder/file");
+		Assert.assertEquals(expectedS3Uri, s3Uri);
+
+		s3Uri = S3Utils.getS3URI("mybucket", "folder/file");
+		expectedS3Uri = S3Utils.getS3URI("mybucket", "folder/file");
+		Assert.assertEquals(expectedS3Uri, s3Uri);
+
+		s3Uri = S3Utils.getS3URI("mybucket", "/folder/", "/file");
+		expectedS3Uri = S3Utils.getS3URI("mybucket", "folder/file");
+		Assert.assertEquals(expectedS3Uri, s3Uri);
+
+		s3Uri = S3Utils.getS3URI("mybucket", "///folder///", "///file");
+		expectedS3Uri = S3Utils.getS3URI("mybucket", "folder/file");
+		Assert.assertEquals(expectedS3Uri, s3Uri);
+
+		s3Uri = S3Utils.getS3URI("mybucket", "///folder//subfolder/////file");
+		expectedS3Uri = S3Utils.getS3URI("mybucket", "folder/subfolder/file");
+		Assert.assertEquals(expectedS3Uri, s3Uri);
+	}
+
+	@Test
 	public void testGetFilename() {
 		AmazonS3URI s3Uri;
 
-		s3Uri = new AmazonS3URI("s3://mybucket/folder/file.txt");
+		s3Uri = S3Utils.getS3URI("mybucket", "/folder/file.txt");
 		Assert.assertEquals("file.txt", S3Utils.getFilename(s3Uri));
 
-		s3Uri = new AmazonS3URI("s3://mybucket/file.txt");
+		s3Uri = S3Utils.getS3URI("mybucket", "/file.txt");
 		Assert.assertEquals("file.txt", S3Utils.getFilename(s3Uri));
 
 		// Do not end with a "/", therefor it's a file
-		s3Uri = new AmazonS3URI("s3://mybucket/file");
+		s3Uri = S3Utils.getS3URI("mybucket", "/file");
 		Assert.assertEquals("file", S3Utils.getFilename(s3Uri));
 
-		s3Uri = new AmazonS3URI("s3://mybucket/folder/");
+		s3Uri = S3Utils.getS3URI("mybucket", "/folder/");
 		Assert.assertNull(S3Utils.getFilename(s3Uri));
 
-		s3Uri = new AmazonS3URI("s3://mybucket/");
+		s3Uri = S3Utils.getS3URI("mybucket", "/");
 		Assert.assertNull(S3Utils.getFilename(s3Uri));
 
-		s3Uri = new AmazonS3URI("s3://mybucket");
+		s3Uri = S3Utils.getS3URI("mybucket");
 		Assert.assertNull(S3Utils.getFilename(s3Uri));
 	}
 
 	@Test
 	public void testGetParentUri() {
-		AmazonS3URI s3Uri;
+		AmazonS3URI s3Uri, parentS3Uri;
 
-		s3Uri = new AmazonS3URI("s3://mybucket/file.txt");
-		Assert.assertEquals("s3://mybucket/", S3Utils.getParentUri(s3Uri).toString());
+		s3Uri = S3Utils.getS3URI("mybucket", "/file.txt");
+		parentS3Uri = S3Utils.getS3URI("mybucket", "/");
+		Assert.assertEquals(parentS3Uri, S3Utils.getParentUri(s3Uri));
 
-		s3Uri = new AmazonS3URI("s3://mybucket/folder/file.txt");
-		Assert.assertEquals("s3://mybucket/folder/", S3Utils.getParentUri(s3Uri).toString());
+		s3Uri = S3Utils.getS3URI("mybucket", "/folder/file.txt");
+		parentS3Uri = S3Utils.getS3URI("mybucket", "/folder/");
+		Assert.assertEquals(parentS3Uri, S3Utils.getParentUri(s3Uri));
 
-		s3Uri = new AmazonS3URI("s3://mybucket/folder/subfolder/file");
-		Assert.assertEquals("s3://mybucket/folder/subfolder/", S3Utils.getParentUri(s3Uri).toString());
+		s3Uri = S3Utils.getS3URI("mybucket", "/folder/subfolder/file");
+		parentS3Uri =  S3Utils.getS3URI("mybucket", "/folder/subfolder/");
+		Assert.assertEquals(parentS3Uri, S3Utils.getParentUri(s3Uri));
 
-		s3Uri = new AmazonS3URI("s3://mybucket/folder/subfolder/");
-		Assert.assertEquals("s3://mybucket/folder/", S3Utils.getParentUri(s3Uri).toString());
+		s3Uri = S3Utils.getS3URI("mybucket", "/folder/subfolder/");
+		parentS3Uri = S3Utils.getS3URI("mybucket", "/folder/");
+		Assert.assertEquals(parentS3Uri, S3Utils.getParentUri(s3Uri));
 
-		s3Uri = new AmazonS3URI("s3://mybucket/folder/");
-		Assert.assertEquals("s3://mybucket/", S3Utils.getParentUri(s3Uri).toString());
+		s3Uri = S3Utils.getS3URI("mybucket", "/folder/");
+		parentS3Uri = S3Utils.getS3URI("mybucket", "/");
+		Assert.assertEquals(parentS3Uri, S3Utils.getParentUri(s3Uri));
 
-		s3Uri = new AmazonS3URI("s3://mybucket/");
-		Assert.assertEquals("s3://mybucket/", S3Utils.getParentUri(s3Uri).toString());
+		s3Uri = S3Utils.getS3URI("mybucket", "/");
+		parentS3Uri = S3Utils.getS3URI("mybucket", "/");
+		Assert.assertEquals(parentS3Uri, S3Utils.getParentUri(s3Uri));
 
 		// Chain
-		s3Uri = new AmazonS3URI("s3://mybucket/folder/subfolder/file");
-		Assert.assertEquals("s3://mybucket/folder/", S3Utils.getParentUri(S3Utils.getParentUri(s3Uri)).toString());
+		s3Uri = S3Utils.getS3URI("mybucket", "/folder/subfolder/file");
+		parentS3Uri = S3Utils.getS3URI("mybucket", "/folder/");
+		Assert.assertEquals(parentS3Uri, S3Utils.getParentUri(S3Utils.getParentUri(s3Uri)));
 	}
 
 	@Test
 	public void testGetDirectoryName() {
 		AmazonS3URI s3Uri;
 
-		s3Uri = new AmazonS3URI("s3://mybucket/");
+		s3Uri = S3Utils.getS3URI("mybucket");
 		Assert.assertNull(S3Utils.getDirectoryName(s3Uri));
 
-		s3Uri = new AmazonS3URI("s3://mybucket/file.txt");
+		s3Uri = S3Utils.getS3URI("mybucket", "/");
+		Assert.assertNull(S3Utils.getDirectoryName(s3Uri));
+
+		s3Uri = S3Utils.getS3URI("mybucket", "/file.txt");
 		Assert.assertNull(S3Utils.getDirectoryName(s3Uri));
 
 
-		s3Uri = new AmazonS3URI("s3://mybucket/folder/");
+		s3Uri = S3Utils.getS3URI("mybucket", "/folder/");
 		Assert.assertEquals("folder", S3Utils.getDirectoryName(s3Uri));
 
-		s3Uri = new AmazonS3URI("s3://mybucket/folder/file.txt");
+		s3Uri = S3Utils.getS3URI("mybucket", "/folder/file.txt");
 		Assert.assertEquals("folder", S3Utils.getDirectoryName(s3Uri));
 
 
-		s3Uri = new AmazonS3URI("s3://mybucket/folder/subfolder/");
+		s3Uri = S3Utils.getS3URI("mybucket", "/folder/subfolder/");
 		Assert.assertEquals("subfolder", S3Utils.getDirectoryName(s3Uri));
 
-		s3Uri = new AmazonS3URI("s3://mybucket/folder/subfolder/file");
+		s3Uri = S3Utils.getS3URI("mybucket", "/folder/subfolder/file");
 		Assert.assertEquals("subfolder", S3Utils.getDirectoryName(s3Uri));
 	}
 }

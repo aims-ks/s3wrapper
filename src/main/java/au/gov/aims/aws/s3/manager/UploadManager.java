@@ -115,16 +115,8 @@ public class UploadManager {
 			File[] childFiles = sourceFile.listFiles();
 
 			if (childFiles != null && childFiles.length > 0) {
-				// Make sure the destination is a directory
-				String destinationKey = destinationUri.getKey();
-				if (destinationKey == null) {
-					destinationKey = "";
-				}
-				if (!destinationKey.endsWith("/")) {
-					destinationKey += "/";
-				}
-
-				AmazonS3URI childDestinationUri = new AmazonS3URI("s3://" + destinationUri.getBucket() + "/" + destinationKey + sourceFile.getName() + "/");
+				AmazonS3URI childDestinationUri =
+					S3Utils.getS3URI(destinationUri.getBucket(), destinationUri.getKey(), sourceFile.getName() + "/");
 
 				for (File childFile : childFiles) {
 					s3List.addAll(
@@ -139,9 +131,8 @@ public class UploadManager {
 				throw new IOException(String.format("The source file '%s' is empty.", sourceFile.getAbsolutePath()));
 			}
 
-			String filename = S3Utils.getFilename(destinationUri);
-			if (filename == null) {
-				destinationUri = new AmazonS3URI("s3://" + destinationUri.getBucket() + "/" + destinationUri.getKey() + sourceFile.getName());
+			if (S3Utils.getFilename(destinationUri) == null) {
+				destinationUri = S3Utils.getS3URI(destinationUri.getBucket(), destinationUri.getKey(), sourceFile.getName());
 			}
 
 

@@ -59,7 +59,7 @@ public class ListManager {
 		boolean listIsTruncated = true;
 		while (listIsTruncated) {
 			for (S3ObjectSummary objectSummary : objectListing.getObjectSummaries()) {
-				AmazonS3URI fileS3Uri = new AmazonS3URI("s3://" + s3Uri.getBucket() + "/" + objectSummary.getKey());
+				AmazonS3URI fileS3Uri = S3Utils.getS3URI(s3Uri.getBucket(), objectSummary.getKey());
 
 				boolean selected = filter == null || filter.matcher(S3Utils.getFilename(fileS3Uri)).matches();
 
@@ -79,7 +79,11 @@ public class ListManager {
 		//   https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/services/s3/model/ObjectListing.html#getCommonPrefixes--
 		List<String> directories = objectListing.getCommonPrefixes();
 		for (String directory : directories) {
-			AmazonS3URI fileS3Uri = new AmazonS3URI("s3://" + s3Uri.getBucket() + "/" + directory);
+			if (!directory.endsWith("/")) {
+				directory += "/";
+			}
+
+			AmazonS3URI fileS3Uri = S3Utils.getS3URI(s3Uri.getBucket(), directory);
 			s3List.addDir(new S3File(fileS3Uri));
 		}
 

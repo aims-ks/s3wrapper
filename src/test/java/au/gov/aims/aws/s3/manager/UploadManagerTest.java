@@ -20,6 +20,7 @@ package au.gov.aims.aws.s3.manager;
 
 import au.gov.aims.aws.s3.Md5;
 import au.gov.aims.aws.s3.S3TestBase;
+import au.gov.aims.aws.s3.S3Utils;
 import au.gov.aims.aws.s3.entity.S3Client;
 import au.gov.aims.aws.s3.entity.S3File;
 import au.gov.aims.aws.s3.entity.S3List;
@@ -44,9 +45,11 @@ public class UploadManagerTest extends S3TestBase {
 		URL origFileUrl = UploadManagerTest.class.getClassLoader().getResource("bucket_files/bin/random_1024.bin");
 		File origFile = new File(origFileUrl.toURI());
 		File tempFile = File. createTempFile("s3mockup_", "_random_1024.bin");
-		AmazonS3URI destinationUri = new AmazonS3URI("s3://" + S3TestBase.S3_BUCKET_ID + "/bin/random_1024.bin");
+		AmazonS3URI destinationUri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "/bin/random_1024.bin");
 
 		try (S3Client client = super.openS3Client()) {
+			super.setupBucket(client);
+
 			S3List uploadS3List = UploadManager.upload(client, origFile, destinationUri);
 			LOGGER.info(uploadS3List);
 

@@ -19,15 +19,11 @@
 package au.gov.aims.aws.s3.entity;
 
 import au.gov.aims.aws.s3.S3Utils;
-import au.gov.aims.aws.s3.manager.DownloadManager;
-import au.gov.aims.aws.s3.manager.UploadManager;
 import com.amazonaws.services.s3.AmazonS3URI;
 import com.amazonaws.services.s3.model.AccessControlList;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import org.json.JSONObject;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.Date;
 import java.util.Map;
 
@@ -44,10 +40,6 @@ public class S3File implements Comparable<S3File> {
 	private String eTag;
 	private String md5sum;
 	private String versionId;
-
-	public S3File(String s3UriStr) {
-		this(new AmazonS3URI(s3UriStr));
-	}
 
 	public S3File(AmazonS3URI s3Uri) {
 		this.s3Uri = s3Uri;
@@ -80,14 +72,6 @@ public class S3File implements Comparable<S3File> {
 		this.setETag(objectMetadata.getETag());
 		this.setVersionId(objectMetadata.getVersionId());
 		this.setFileSize(objectMetadata.getContentLength());
-	}
-
-	public S3List download(S3Client client, File destinationFile) throws IOException {
-		return DownloadManager.download(client, this.s3Uri, destinationFile);
-	}
-
-	public S3List upload(S3Client client, File sourceFile) throws IOException, InterruptedException {
-		return UploadManager.upload(client, sourceFile, this.s3Uri);
 	}
 
 
