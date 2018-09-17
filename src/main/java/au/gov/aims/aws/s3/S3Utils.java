@@ -28,6 +28,31 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 public class S3Utils {
+	private static final String S3_PROTOCOL = "s3://";
+
+	public static boolean isS3URI(String uri) {
+		if (uri == null) {
+			return false;
+		}
+
+		// Check if it starts with the s3 protocol
+		if (!uri.startsWith(S3Utils.S3_PROTOCOL)) {
+			return false;
+		}
+
+		// Check if there is something after the s3 protocol
+		// (i.e. if there is a bucket id)
+		if (uri.length() <= S3Utils.S3_PROTOCOL.length()) {
+			return false;
+		}
+
+		// Check if the bucket name is empty
+		if (uri.startsWith(S3Utils.S3_PROTOCOL + '/')) {
+			return false;
+		}
+
+		return true;
+	}
 
 	public static AmazonS3URI getS3URI(String bucketId) {
 		return S3Utils.getS3URI(bucketId, null);
@@ -77,7 +102,7 @@ public class S3Utils {
 		// Example: "//folder///file" => "/folder/file"
 		filePath = filePath.replaceAll("/{2,}", "/");
 
-		return new AmazonS3URI("s3://" + bucketId + filePath);
+		return new AmazonS3URI(S3Utils.S3_PROTOCOL + bucketId + filePath);
 	}
 
 	public static String getFilename(AmazonS3URI s3Uri) {
