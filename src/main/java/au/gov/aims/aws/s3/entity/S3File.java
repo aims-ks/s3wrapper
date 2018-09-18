@@ -24,6 +24,7 @@ import com.amazonaws.services.s3.model.AccessControlList;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.util.Date;
 import java.util.Map;
 
@@ -40,6 +41,9 @@ public class S3File implements Comparable<S3File> {
 	private String eTag;
 	private String md5sum;
 	private String versionId;
+
+	// Used with upload / download
+	private File localFile;
 
 	public S3File(AmazonS3URI s3Uri) {
 		this.s3Uri = s3Uri;
@@ -107,6 +111,14 @@ public class S3File implements Comparable<S3File> {
 		this.versionId = versionId;
 	}
 
+	public File getLocalFile() {
+		return this.localFile;
+	}
+
+	public void setLocalFile(File localFile) {
+		this.localFile = localFile;
+	}
+
 
 	public Long getLastModified() {
 		return this.lastModified;
@@ -165,6 +177,7 @@ public class S3File implements Comparable<S3File> {
 		json.put("uri", this.s3Uri.getURI().toString());
 		json.put("filename", S3Utils.getFilename(this.s3Uri));
 		json.put("directory", S3Utils.getDirectoryName(this.s3Uri));
+		json.put("localFile", this.localFile);
 
 		json.put("size", this.fileSize);
 		json.put("lastModified", this.lastModified);

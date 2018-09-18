@@ -119,7 +119,7 @@ public class UploadManager {
 					S3Utils.getS3URI(destinationUri.getBucket(), destinationUri.getKey(), sourceFile.getName() + "/");
 
 				for (File childFile : childFiles) {
-					s3List.addAll(
+					s3List.putAll(
 						UploadManager.upload(transferManager, childFile, childDestinationUri, bucketIsPublic));
 				}
 			}
@@ -177,8 +177,9 @@ public class UploadManager {
 
 
 			S3File s3File = new S3File(destinationUri);
+			s3File.setLocalFile(sourceFile);
 
-			s3List.addFile(s3File);
+			s3List.putFile(s3File);
 
 		} else {
 			throw new IOException(String.format("Can not upload the file '%s', it's not a normal file.", sourceFile.getAbsolutePath()));

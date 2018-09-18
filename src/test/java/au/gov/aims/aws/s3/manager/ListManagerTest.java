@@ -28,9 +28,7 @@ import org.apache.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 public class ListManagerTest extends S3TestBase {
 	private static final Logger LOGGER = Logger.getLogger(ListManagerTest.class);
@@ -51,21 +49,15 @@ public class ListManagerTest extends S3TestBase {
 
 			Assert.assertNotNull("The file list is null", s3List);
 
-			Set<S3File> dirs = s3List.getDirs();
+			Map<String, S3File> dirs = s3List.getDirs();
 			Assert.assertTrue("Found sub-directory in 'bin'.", dirs == null || dirs.isEmpty());
 
-			Set<S3File> files = s3List.getFiles();
+			Map<String, S3File> files = s3List.getFiles();
 			Assert.assertEquals("Wrong number of files in 'bin'.", 3, files.size());
 
-			// Create a map of file (easier to test)
-			Map<String, S3File> fileMap = new HashMap<String, S3File>();
-			for (S3File file : files) {
-				fileMap.put(file.getS3Uri().getKey(), file);
-			}
-
-			Assert.assertTrue("Missing file 'bin/random_100.bin'.", fileMap.containsKey("bin/random_100.bin"));
-			Assert.assertTrue("Missing file 'bin/random_1024.bin'.", fileMap.containsKey("bin/random_1024.bin"));
-			Assert.assertTrue("Missing file 'bin/zero_100.bin'.", fileMap.containsKey("bin/zero_100.bin"));
+			Assert.assertTrue("Missing file 'bin/random_100.bin'.", files.containsKey("bin/random_100.bin"));
+			Assert.assertTrue("Missing file 'bin/random_1024.bin'.", files.containsKey("bin/random_1024.bin"));
+			Assert.assertTrue("Missing file 'bin/zero_100.bin'.", files.containsKey("bin/zero_100.bin"));
 		}
 	}
 }

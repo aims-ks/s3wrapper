@@ -32,7 +32,7 @@ import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Set;
+import java.util.Map;
 
 public class DownloadManager {
 	private static final Logger LOGGER = Logger.getLogger(DownloadManager.class);
@@ -66,11 +66,11 @@ public class DownloadManager {
 
 			// Parse the JSON to find the files' URI, and download them.
 			if (filteredList != null) {
-				Set<S3File> filteredFileSet = filteredList.getFiles();
+				Map<String, S3File> filteredFileSet = filteredList.getFiles();
 				if (filteredFileSet != null && !filteredFileSet.isEmpty()) {
-					for (S3File filteredFile : filteredFileSet) {
+					for (S3File filteredFile : filteredFileSet.values()) {
 						String filteredFilename = S3Utils.getFilename(filteredFile.getS3Uri());
-						s3List.addAll(DownloadManager.download(client, filteredFile.getS3Uri(), new File(destinationFile, filteredFilename)));
+						s3List.putAll(DownloadManager.download(client, filteredFile.getS3Uri(), new File(destinationFile, filteredFilename)));
 					}
 				}
 			}
@@ -81,7 +81,7 @@ public class DownloadManager {
 			// The destinationFile must denote a file (not a directory)
 			File finalDestinationFile = destinationFile.isDirectory() ? new File(destinationFile, filename) : destinationFile;
 
-			s3List.addFile(DownloadManager.downloadFile(client, sourceUri, finalDestinationFile));
+			s3List.putFile(DownloadManager.downloadFile(client, sourceUri, finalDestinationFile));
 		}
 
 		long endTime = System.currentTimeMillis();
@@ -116,6 +116,7 @@ public class DownloadManager {
 			if (s3Object != null) {
 				ObjectMetadata metadata = s3Object.getObjectMetadata();
 				s3File = new S3File(sourceUri, metadata);
+				s3File.setLocalFile(destinationFile);
 
 				s3FileInputStream = s3Object.getObjectContent();
 				if (s3FileInputStream != null) {

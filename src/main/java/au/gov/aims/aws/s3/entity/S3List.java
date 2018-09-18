@@ -20,30 +20,30 @@ package au.gov.aims.aws.s3.entity;
 
 import org.json.JSONObject;
 
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class S3List {
 	private Long executionTime = null;
-	private Set<S3File> dirs;
-	private Set<S3File> files;
+	private Map<String, S3File> dirs;
+	private Map<String, S3File> files;
 
 	public S3List() {
-		this.dirs = new TreeSet<S3File>();
-		this.files = new TreeSet<S3File>();
+		this.dirs = new TreeMap<String, S3File>();
+		this.files = new TreeMap<String, S3File>();
 	}
 
-	public boolean addFile(S3File s3File) {
-		return this.files.add(s3File);
+	public S3File putFile(S3File s3File) {
+		return this.files.put(s3File.getS3Uri().getKey(), s3File);
 	}
-	public Set<S3File> getFiles() {
+	public Map<String, S3File> getFiles() {
 		return this.files;
 	}
 
-	public boolean addDir(S3File s3File) {
-		return this.dirs.add(s3File);
+	public S3File putDir(S3File s3File) {
+		return this.dirs.put(s3File.getS3Uri().getKey(), s3File);
 	}
-	public Set<S3File> getDirs() {
+	public Map<String, S3File> getDirs() {
 		return this.dirs;
 	}
 
@@ -54,20 +54,20 @@ public class S3List {
 		return this.executionTime;
 	}
 
-	public void addAll(S3List otherList) {
-		this.dirs.addAll(otherList.dirs);
-		this.files.addAll(otherList.files);
+	public void putAll(S3List otherList) {
+		this.dirs.putAll(otherList.dirs);
+		this.files.putAll(otherList.files);
 	}
 
 	public JSONObject toJSON() {
 		JSONObject jsonDirs = new JSONObject();
-		for (S3File dir : this.dirs) {
-			jsonDirs.put(dir.getS3Uri().getKey(), dir.toJSON());
+		for (Map.Entry<String, S3File> dir : this.dirs.entrySet()) {
+			jsonDirs.put(dir.getKey(), dir.getValue().toJSON());
 		}
 
 		JSONObject jsonFiles = new JSONObject();
-		for (S3File file : this.files) {
-			jsonFiles.put(file.getS3Uri().getKey(), file.toJSON());
+		for (Map.Entry<String, S3File> file : this.files.entrySet()) {
+			jsonFiles.put(file.getKey(), file.getValue().toJSON());
 		}
 
 

@@ -34,7 +34,6 @@ import java.io.File;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 public class DownloadManagerTest extends S3TestBase {
 	private static final Logger LOGGER = Logger.getLogger(DownloadManagerTest.class);
@@ -76,36 +75,35 @@ public class DownloadManagerTest extends S3TestBase {
 
 			Assert.assertNotNull("The downloaded file list is null", s3List);
 
-			Set<S3File> dirs = s3List.getDirs();
+			Map<String, S3File> dirs = s3List.getDirs();
 			Assert.assertTrue("Some directories were downloaded.", dirs == null || dirs.isEmpty());
 
-			Set<S3File> files = s3List.getFiles();
+			Map<String, S3File> files = s3List.getFiles();
 			Assert.assertEquals("Wrong number of downloaded files.", 1, files.size());
 
-			// There is only one file (it's not easy to extract a single element from a set)
-			for (S3File file : files) {
-				Assert.assertEquals("Missing file 'bin/random_100.bin'.", "bin/random_100.bin", file.getS3Uri().getKey());
-				Assert.assertTrue("The destination file was not created.", destinationFile.exists());
+			// Get the file from the map
+			S3File file = files.get("bin/random_100.bin");
+			Assert.assertEquals("Missing file 'bin/random_100.bin'.", "bin/random_100.bin", file.getS3Uri().getKey());
+			Assert.assertTrue("The destination file was not created.", destinationFile.exists());
 
-				// Check file size
-				Long origFileSize = origFile.length();
-				Long destinationFileSize = destinationFile.length();
-				Long metadataFileSize = file.getFileSize();
+			// Check file size
+			Long origFileSize = origFile.length();
+			Long destinationFileSize = destinationFile.length();
+			Long metadataFileSize = file.getFileSize();
 
-				Assert.assertEquals("The file size in the file metadata differ from the original file size.", metadataFileSize, origFileSize);
-				Assert.assertEquals("The downloaded file size differ from the original file size.", destinationFileSize, origFileSize);
+			Assert.assertEquals("The file size in the file metadata differ from the original file size.", metadataFileSize, origFileSize);
+			Assert.assertEquals("The downloaded file size differ from the original file size.", destinationFileSize, origFileSize);
 
-				// Check file md5sum
-				String md5sumOrig = Md5.md5sum(origFile);
-				String md5sumDownloaded = Md5.md5sum(destinationFile);
-				Assert.assertEquals("The downloaded file md5sum doesn't match original file.", md5sumOrig, md5sumDownloaded);
+			// Check file md5sum
+			String md5sumOrig = Md5.md5sum(origFile);
+			String md5sumDownloaded = Md5.md5sum(destinationFile);
+			Assert.assertEquals("The downloaded file md5sum doesn't match original file.", md5sumOrig, md5sumDownloaded);
 
-				// Check file lastModified date
-				Long downloadedLastModified = file.getLastModified();
-				Assert.assertNotNull("The downloaded file lastModified metadata attribute is null.", downloadedLastModified);
-				Assert.assertEquals("The downloaded file lastModified metadata attribute do not actual file lastModified attribute.",
-					downloadedLastModified.longValue(), destinationFile.lastModified());
-			}
+			// Check file lastModified date
+			Long downloadedLastModified = file.getLastModified();
+			Assert.assertNotNull("The downloaded file lastModified metadata attribute is null.", downloadedLastModified);
+			Assert.assertEquals("The downloaded file lastModified metadata attribute do not actual file lastModified attribute.",
+				downloadedLastModified.longValue(), destinationFile.lastModified());
 		}
 	}
 

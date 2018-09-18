@@ -30,7 +30,7 @@ import java.net.URL;
 
 public class S3TestBase {
 	private static final Logger LOGGER = Logger.getLogger(S3TestBase.class);
-	protected static final String S3_BUCKET_ID = "aims-junit-test";
+	protected static final String S3_BUCKET_ID = "aims-s3wrapper-junit-test";
 
 	protected S3Client openS3Client() throws Exception {
 		return S3Client.parse(PropertiesLoader.load("aws-credentials.properties"));
@@ -48,9 +48,13 @@ public class S3TestBase {
 			S3List uploadedFiles = new S3List();
 			AmazonS3URI bucketURI = S3Utils.getS3URI(S3_BUCKET_ID);
 			for (File bucketFilesFile : bucketFilesFolder.listFiles()) {
-				uploadedFiles.addAll(UploadManager.upload(client, bucketFilesFile, bucketURI));
+				uploadedFiles.putAll(UploadManager.upload(client, bucketFilesFile, bucketURI));
 			}
-			LOGGER.info(uploadedFiles.toString());
+			LOGGER.info(String.format("%n" +
+				"############# TEST BUCKET CREATED #############%n" +
+				"Bucket ID: %s%n" +
+				"Files: %s%n" +
+				"###############################################", S3TestBase.S3_BUCKET_ID, uploadedFiles.toString()));
 
 		} catch(BucketManager.BucketAlreadyExistsException ex) {
 			LOGGER.debug(String.format("The bucket %s already exists.", S3TestBase.S3_BUCKET_ID), ex);

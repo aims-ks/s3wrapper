@@ -61,12 +61,9 @@ public class UploadManagerTest extends S3TestBase {
 			LOGGER.info(checkS3List);
 
 			Assert.assertNotNull("The file info response is null.", checkS3List);
-			// There should be only one file in the set
-			S3File checkS3File = null;
-			for (S3File s3File : checkS3List.getFiles()) {
-				checkS3File = s3File;
-				break;
-			}
+
+			// Get the file from the map
+			S3File checkS3File = checkS3List.getFiles().get("bin/random_1024.bin");
 			Assert.assertNotNull("The uploaded file is null", checkS3File);
 			Assert.assertEquals("The uploaded file key is wrong", "bin/random_1024.bin", checkS3File.getS3Uri().getKey());
 			Assert.assertEquals("The uploaded file size do not match the original", origFile.length(), checkS3File.getFileSize().longValue());
