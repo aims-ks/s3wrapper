@@ -46,6 +46,11 @@ public class FileWrapper {
 		this.s3URI = s3URI;
 	}
 
+	public FileWrapper(FileWrapper parent, String pathname) {
+		this.ioFile = new File(parent.ioFile, pathname);
+		this.s3URI = S3Utils.getS3URI(parent.s3URI.getBucket(), parent.s3URI.getKey() + "/" + pathname);
+	}
+
 	public File getFile() {
 		return this.ioFile;
 	}
