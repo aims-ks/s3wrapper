@@ -26,7 +26,9 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.FilenameFilter;
 import java.net.URL;
+import java.util.List;
 
 public class FileWrapperTest extends S3TestBase {
 	private static final Logger LOGGER = Logger.getLogger(FileWrapperTest.class);
@@ -37,19 +39,21 @@ public class FileWrapperTest extends S3TestBase {
 		File ioFile = new File(ioFileUrl.toURI());
 		FileWrapper rootFileWrapper = new FileWrapper(null, ioFile);
 
-		FileWrapper[] fileWrapperList = rootFileWrapper.listFiles(null);
+		List<FileWrapper> fileWrapperList = rootFileWrapper.listFiles(null);
 		Assert.assertNotNull("The file list is null", fileWrapperList);
-		Assert.assertEquals("Wrong number of files in the bucket.", 3, fileWrapperList.length);
+		Assert.assertEquals("Wrong number of files in the bucket.", 3, fileWrapperList.size());
 
 		for (FileWrapper fileWrapper : fileWrapperList) {
 			String filename = fileWrapper.getFile().getName();
 
 			if ("bin".equals(filename)) {
 				Assert.assertEquals("The file was not as expected", new File(ioFile, "bin"), fileWrapper.getFile());
+				Assert.assertNull("The file wrapper is associated with a s3URI.", fileWrapper.getS3URI());
+
 				// List files in "bin"
-				FileWrapper[] binFileWrapperList = fileWrapper.listFiles(null);
+				List<FileWrapper> binFileWrapperList = fileWrapper.listFiles(null);
 				Assert.assertNotNull("The 'bin' file list is null", binFileWrapperList);
-				Assert.assertEquals("Wrong number of files in the 'bin'.", 3, binFileWrapperList.length);
+				Assert.assertEquals("Wrong number of files in the 'bin'.", 3, binFileWrapperList.size());
 
 				// Check files in "bin"
 				for (FileWrapper binFileWrapper : binFileWrapperList) {
@@ -57,12 +61,15 @@ public class FileWrapperTest extends S3TestBase {
 
 					if ("random_100.bin".equals(binFilename)) {
 						Assert.assertEquals("The bin file was not as expected", new File(ioFile, "bin/random_100.bin"), binFileWrapper.getFile());
+						Assert.assertNull("The file wrapper is associated with a s3URI.", binFileWrapper.getS3URI());
 
 					} else if ("random_1024.bin".equals(binFilename)) {
 						Assert.assertEquals("The bin file was not as expected", new File(ioFile, "bin/random_1024.bin"), binFileWrapper.getFile());
+						Assert.assertNull("The file wrapper is associated with a s3URI.", binFileWrapper.getS3URI());
 
 					} else if ("zero_100.bin".equals(binFilename)) {
 						Assert.assertEquals("The bin file was not as expected", new File(ioFile, "bin/zero_100.bin"), binFileWrapper.getFile());
+						Assert.assertNull("The file wrapper is associated with a s3URI.", binFileWrapper.getS3URI());
 						Assert.assertTrue(String.format("The bin file %s does not exist.", binFileWrapper.getFile()), binFileWrapper.getFile().exists());
 
 					} else {
@@ -72,15 +79,123 @@ public class FileWrapperTest extends S3TestBase {
 
 			} else if ("img".equals(filename)) {
 				Assert.assertEquals("The file was not as expected", new File(ioFile, "img"), fileWrapper.getFile());
+				Assert.assertNull("The file wrapper is associated with a s3URI.", fileWrapper.getS3URI());
 
 			} else if ("root.txt".equals(filename)) {
 				Assert.assertEquals("The file was not as expected", new File(ioFile, "root.txt"), fileWrapper.getFile());
+				Assert.assertNull("The file wrapper is associated with a s3URI.", fileWrapper.getS3URI());
+				Assert.assertTrue(String.format("The file %s does not exist.", fileWrapper.getFile()), fileWrapper.getFile().exists());
+
+
+			} else {
+				Assert.fail(String.format("Unexpected filename: '%s'", filename));
+			}
+		}
+	}
+
+	@Test
+	public void testListFilesRecursivelyWithoutS3() throws Exception {
+		URL ioFileUrl = FileWrapperTest.class.getClassLoader().getResource("bucket_files");
+		File ioFile = new File(ioFileUrl.toURI());
+		FileWrapper rootFileWrapper = new FileWrapper(null, ioFile);
+
+		List<FileWrapper> fileWrapperList = rootFileWrapper.listFiles(null, true);
+		Assert.assertNotNull("The file list is null", fileWrapperList);
+		Assert.assertEquals("Wrong number of files in the bucket.", 9, fileWrapperList.size());
+
+		for (FileWrapper fileWrapper : fileWrapperList) {
+			String filename = fileWrapper.getFile().getName();
+
+			if ("bin".equals(filename)) {
+				Assert.assertEquals("The file was not as expected", new File(ioFile, "bin"), fileWrapper.getFile());
+				Assert.assertNull("The file wrapper is associated with a s3URI.", fileWrapper.getS3URI());
+
+			} else if ("random_100.bin".equals(filename)) {
+				Assert.assertEquals("The file was not as expected", new File(ioFile, "bin/random_100.bin"), fileWrapper.getFile());
+				Assert.assertNull("The file wrapper is associated with a s3URI.", fileWrapper.getS3URI());
+
+			} else if ("random_1024.bin".equals(filename)) {
+				Assert.assertEquals("The file was not as expected", new File(ioFile, "bin/random_1024.bin"), fileWrapper.getFile());
+				Assert.assertNull("The file wrapper is associated with a s3URI.", fileWrapper.getS3URI());
+
+			} else if ("zero_100.bin".equals(filename)) {
+				Assert.assertEquals("The file was not as expected", new File(ioFile, "bin/zero_100.bin"), fileWrapper.getFile());
+				Assert.assertNull("The file wrapper is associated with a s3URI.", fileWrapper.getS3URI());
+
+
+			} else if ("img".equals(filename)) {
+				Assert.assertEquals("The file was not as expected", new File(ioFile, "img"), fileWrapper.getFile());
+				Assert.assertNull("The file wrapper is associated with a s3URI.", fileWrapper.getS3URI());
+
+			} else if ("black.jpg".equals(filename)) {
+				Assert.assertEquals("The file was not as expected", new File(ioFile, "img/black.jpg"), fileWrapper.getFile());
+				Assert.assertNull("The file wrapper is associated with a s3URI.", fileWrapper.getS3URI());
+
+			} else if ("gradiant.jpg".equals(filename)) {
+				Assert.assertEquals("The file was not as expected", new File(ioFile, "img/gradiant.jpg"), fileWrapper.getFile());
+				Assert.assertNull("The file wrapper is associated with a s3URI.", fileWrapper.getS3URI());
+
+			} else if ("white.jpg".equals(filename)) {
+				Assert.assertEquals("The file was not as expected", new File(ioFile, "img/white.jpg"), fileWrapper.getFile());
+				Assert.assertNull("The file wrapper is associated with a s3URI.", fileWrapper.getS3URI());
+
+
+			} else if ("root.txt".equals(filename)) {
+				Assert.assertEquals("The file was not as expected", new File(ioFile, "root.txt"), fileWrapper.getFile());
+				Assert.assertNull("The file wrapper is associated with a s3URI.", fileWrapper.getS3URI());
 				Assert.assertTrue(String.format("The file %s does not exist.", fileWrapper.getFile()), fileWrapper.getFile().exists());
 
 			} else {
 				Assert.fail(String.format("Unexpected filename: '%s'", filename));
 			}
 		}
+	}
+
+	@Test
+	public void testListFilesFilterRecursivelyWithoutS3() throws Exception {
+		URL ioFileUrl = FileWrapperTest.class.getClassLoader().getResource("bucket_files");
+		File ioFile = new File(ioFileUrl.toURI());
+		FileWrapper rootFileWrapper = new FileWrapper(null, ioFile);
+
+		List<FileWrapper> fileWrapperList = rootFileWrapper.listFiles(null, new FilenameFilter() {
+			@Override
+			public boolean accept(File dir, String filename) {
+				return filename.contains("n");
+			}
+		}, true);
+
+		Assert.assertNotNull("The file list is null", fileWrapperList);
+
+		for (FileWrapper fileWrapper : fileWrapperList) {
+			String filename = fileWrapper.getFile().getName();
+
+			if ("bin".equals(filename)) {
+				Assert.assertEquals("The file was not as expected", new File(ioFile, "bin"), fileWrapper.getFile());
+				Assert.assertNull("The file wrapper is associated with a s3URI.", fileWrapper.getS3URI());
+
+			} else if ("random_100.bin".equals(filename)) {
+				Assert.assertEquals("The file was not as expected", new File(ioFile, "bin/random_100.bin"), fileWrapper.getFile());
+				Assert.assertNull("The file wrapper is associated with a s3URI.", fileWrapper.getS3URI());
+
+			} else if ("random_1024.bin".equals(filename)) {
+				Assert.assertEquals("The file was not as expected", new File(ioFile, "bin/random_1024.bin"), fileWrapper.getFile());
+				Assert.assertNull("The file wrapper is associated with a s3URI.", fileWrapper.getS3URI());
+
+			} else if ("zero_100.bin".equals(filename)) {
+				Assert.assertEquals("The file was not as expected", new File(ioFile, "bin/zero_100.bin"), fileWrapper.getFile());
+				Assert.assertNull("The file wrapper is associated with a s3URI.", fileWrapper.getS3URI());
+
+			} else if ("gradiant.jpg".equals(filename)) {
+				Assert.assertEquals("The file was not as expected", new File(ioFile, "img/gradiant.jpg"), fileWrapper.getFile());
+				Assert.assertNull("The file wrapper is associated with a s3URI.", fileWrapper.getS3URI());
+
+
+			} else {
+				Assert.fail(String.format("Unexpected filename: '%s'", filename));
+			}
+		}
+
+		Assert.assertEquals("Wrong number of files in the bucket.", 5, fileWrapperList.size());
 	}
 
 	@Test
@@ -118,6 +233,71 @@ public class FileWrapperTest extends S3TestBase {
 	 * @throws Exception If something goes wrong...
 	 */
 	@Test
+	public void testListFilesFilterRecursively() throws Exception {
+		AmazonS3URI s3Uri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID);
+		File ioFile = new File("/tmp/s3wrapper/FileWrapper");
+		FileWrapper rootFileWrapper = new FileWrapper(s3Uri, ioFile);
+
+		// Delete the folder on disk if it already exists
+		FileUtils.deleteDirectory(ioFile);
+
+		try (S3Client client = super.openS3Client()) {
+			super.setupBucket(client);
+
+			List<FileWrapper> fileWrapperList = rootFileWrapper.listFiles(client, new FilenameFilter() {
+				@Override
+				public boolean accept(File dir, String filename) {
+					return filename.contains("n");
+				}
+			}, true);
+
+
+			Assert.assertNotNull("The file list is null", fileWrapperList);
+
+			for (FileWrapper fileWrapper : fileWrapperList) {
+				String filename = fileWrapper.getFile().getName();
+
+
+				if ("bin".equals(filename)) {
+					Assert.assertEquals("The file was not as expected", new File(ioFile, "bin"), fileWrapper.getFile());
+					Assert.assertEquals("The file was not as expected", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "bin/"), fileWrapper.getS3URI());
+
+				} else if ("random_100.bin".equals(filename)) {
+					Assert.assertEquals("The file was not as expected", new File(ioFile, "bin/random_100.bin"), fileWrapper.getFile());
+					Assert.assertEquals("The file was not as expected", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "bin/random_100.bin"), fileWrapper.getS3URI());
+
+				} else if ("random_1024.bin".equals(filename)) {
+					Assert.assertEquals("The file was not as expected", new File(ioFile, "bin/random_1024.bin"), fileWrapper.getFile());
+					Assert.assertEquals("The file was not as expected", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "bin/random_1024.bin"), fileWrapper.getS3URI());
+
+				} else if ("zero_100.bin".equals(filename)) {
+					Assert.assertEquals("The file was not as expected", new File(ioFile, "bin/zero_100.bin"), fileWrapper.getFile());
+					Assert.assertEquals("The file was not as expected", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "bin/zero_100.bin"), fileWrapper.getS3URI());
+
+				} else if ("gradiant.jpg".equals(filename)) {
+					Assert.assertEquals("The file was not as expected", new File(ioFile, "img/gradiant.jpg"), fileWrapper.getFile());
+					Assert.assertEquals("The file was not as expected", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "img/gradiant.jpg"), fileWrapper.getS3URI());
+
+
+				} else {
+					Assert.fail(String.format("Unexpected filename: '%s'", filename));
+				}
+			}
+
+			Assert.assertEquals("Wrong number of files in the bucket.", 5, fileWrapperList.size());
+		}
+
+		// Cleanup at the end of the test
+		FileUtils.deleteDirectory(ioFile);
+	}
+
+
+	/**
+	 * Upload a file to S3, then download it to see if it has changed.
+	 * NOTE: The resource file "aws-credentials.properties" must be set before running this test.
+	 * @throws Exception If something goes wrong...
+	 */
+	@Test
 	public void testListFiles() throws Exception {
 		AmazonS3URI s3Uri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID);
 		File ioFile = new File("/tmp/s3wrapper/FileWrapper");
@@ -129,9 +309,9 @@ public class FileWrapperTest extends S3TestBase {
 		try (S3Client client = super.openS3Client()) {
 			super.setupBucket(client);
 
-			FileWrapper[] fileWrapperList = rootFileWrapper.listFiles(client);
+			List<FileWrapper> fileWrapperList = rootFileWrapper.listFiles(client);
 			Assert.assertNotNull("The file list is null", fileWrapperList);
-			Assert.assertEquals("Wrong number of files in the bucket.", 3, fileWrapperList.length);
+			Assert.assertEquals("Wrong number of files in the bucket.", 3, fileWrapperList.size());
 
 			for (FileWrapper fileWrapper : fileWrapperList) {
 				String filename = fileWrapper.getFile().getName();
@@ -139,9 +319,9 @@ public class FileWrapperTest extends S3TestBase {
 				if ("bin".equals(filename)) {
 					Assert.assertEquals("The file was not as expected", new File(ioFile, "bin"), fileWrapper.getFile());
 					// List files in "bin"
-					FileWrapper[] binFileWrapperList = fileWrapper.listFiles(client);
+					List<FileWrapper> binFileWrapperList = fileWrapper.listFiles(client);
 					Assert.assertNotNull("The 'bin' file list is null", binFileWrapperList);
-					Assert.assertEquals("Wrong number of files in the 'bin'.", 3, binFileWrapperList.length);
+					Assert.assertEquals("Wrong number of files in the 'bin'.", 3, binFileWrapperList.size());
 
 					// Check files in "bin"
 					for (FileWrapper binFileWrapper : binFileWrapperList) {

@@ -72,6 +72,18 @@ public class FileWrapper {
 		return false;
 	}
 
+	public String getFilename() {
+		if (this.s3URI != null) {
+			return S3Utils.getFilename(this.s3URI);
+		}
+
+		if (this.ioFile != null) {
+			return this.ioFile.getName();
+		}
+
+		return null;
+	}
+
 	public File getFile() {
 		return this.ioFile;
 	}
@@ -131,22 +143,91 @@ public class FileWrapper {
 	}
 
 
-	public FileWrapper[] listFiles(S3Client client) {
-		return this.listFiles(client, null, null);
+	// Similar to io.File.listFiles()
+	public List<FileWrapper> listFiles(S3Client client) {
+		return this.listFiles(client, null, null, false);
+	}
+	public List<FileWrapper> listFiles(S3Client client, boolean recursive) {
+		return this.listFiles(client, null, null, recursive);
 	}
 
-	public FileWrapper[] listFiles(S3Client client, FilenameFilter filenameFilter) {
-		return this.listFiles(client, filenameFilter, null);
+	// Similar to io.File.listFiles(FilenameFilter)
+	public List<FileWrapper> listFiles(S3Client client, FilenameFilter filenameFilter) {
+		return this.listFiles(client, filenameFilter, null, false);
+	}
+	public List<FileWrapper> listFiles(S3Client client, FilenameFilter filenameFilter, boolean recursive) {
+		return this.listFiles(client, filenameFilter, null, recursive);
 	}
 
-	public FileWrapper[] listFiles(S3Client client, FileFilter fileFilter) {
-		return this.listFiles(client, null, fileFilter);
+	// Similar to io.File.listFiles(FileFilter)
+	public List<FileWrapper> listFiles(S3Client client, FileFilter fileFilter) {
+		return this.listFiles(client, null, fileFilter, false);
+	}
+	public List<FileWrapper> listFiles(S3Client client, FileFilter fileFilter, boolean recursive) {
+		return this.listFiles(client, null, fileFilter, recursive);
 	}
 
-	private FileWrapper[] listFiles(S3Client client, FilenameFilter filenameFilter, FileFilter fileFilter) {
-		FileWrapper[] fileWrappers = null;
+	// Similar to FileUtils.listFiles(File, String[], boolean)
+	public List<FileWrapper> listFiles(S3Client client, final String[] extensions, boolean recursive) {
+		return this.listFiles(client, new FilenameFilter() {
+			@Override
+			public boolean accept(File dir, String name) {
+				if (extensions == null) {
+					return true;
+				}
+				for (String extension : extensions) {
+					if (name.endsWith("." + extension)) {
+						return true;
+					}
+				}
+				return false;
+			}
+		}, null, recursive);
+	}
+
+	private List<FileWrapper> listFiles(S3Client client, FilenameFilter filenameFilter, FileFilter fileFilter, boolean recursive) {
+		List<FileWrapper> fileWrappers = listFilesRecursive(client, filenameFilter, fileFilter, recursive);
+
+		if (fileWrappers != null && !fileWrappers.isEmpty()) {
+			if (client != null && this.s3URI != null) {
+				// Remove directories that doesnt match
+				if (filenameFilter != null || fileFilter != null) {
+					List<FileWrapper> filteredFileWrappers = new ArrayList<FileWrapper>();
+					for (FileWrapper fileWrapper : fileWrappers) {
+						boolean selected = false;
+						if (fileWrapper.isDirectory()) {
+							File ioFile = fileWrapper.getFile();
+							if (filenameFilter != null) {
+								selected = filenameFilter.accept(ioFile.getParentFile(), ioFile.getName());
+							} else if (fileFilter != null) {
+								selected = fileFilter.accept(ioFile);
+							}
+						} else {
+							selected = true;
+						}
+
+						if (selected) {
+							filteredFileWrappers.add(fileWrapper);
+						}
+					}
+
+					fileWrappers = filteredFileWrappers;
+				}
+			}
+		}
+
+		return fileWrappers;
+	}
+
+	private List<FileWrapper> listFilesRecursive(S3Client client, FilenameFilter filenameFilter, FileFilter fileFilter, boolean recursive) {
+		List<FileWrapper> fileWrappers = null;
 
 		if (client != null && this.s3URI != null) {
+			// NOTE: We can't use ListManager.ls(... recursive) here
+			//   because the S3URI needs to be linked with their ioFile.
+			//   It's much easier to do the recursion locally rather than
+			//   reverse engineer what the ioFile path should be for a
+			//   given (possibly quite deep) S3URI.
 			S3List s3List;
 			if (filenameFilter != null) {
 				s3List = ListManager.ls(client, this.s3URI, filenameFilter);
@@ -156,7 +237,24 @@ public class FileWrapper {
 				s3List = ListManager.ls(client, this.s3URI);
 			}
 
-			fileWrappers = this.toFileWrapperArray(s3List);
+			if (s3List != null) {
+				fileWrappers = this.toFileWrapperList(s3List);
+
+				if (recursive) {
+					Map<String, S3File> dirs = s3List.getDirs();
+					if (dirs != null && !dirs.isEmpty()) {
+						for (S3File dir : dirs.values()) {
+							AmazonS3URI dirS3URI = dir.getS3Uri();
+							String dirName = S3Utils.getDirectoryName(dirS3URI);
+							File dirFile = new File(this.ioFile, dirName);
+							FileWrapper dirFileWrapper = new FileWrapper(dirS3URI, dirFile);
+
+							fileWrappers.addAll(
+								dirFileWrapper.listFiles(client, filenameFilter, fileFilter, recursive));
+						}
+					}
+				}
+			}
 
 		} else if (this.ioFile != null) {
 			File[] files;
@@ -169,10 +267,33 @@ public class FileWrapper {
 			}
 
 			if (files != null && files.length > 0) {
-				fileWrappers = new FileWrapper[files.length];
+				fileWrappers = new ArrayList<FileWrapper>(files.length);
 
-				for (int i=0; i<files.length; i++) {
-					fileWrappers[i] = new FileWrapper(null, files[i]);
+				for (File file : files) {
+					fileWrappers.add(new FileWrapper(null, file));
+				}
+
+
+				if (recursive) {
+					// List all directories
+					// NOTE: This is not optimal but that seems
+					//   to be the best way to do it in java:
+					//   - https://stackoverflow.com/questions/5125242/java-list-only-subdirectories-from-a-directory-not-files
+					//   - https://stackoverflow.com/questions/1034977/how-to-retrieve-a-list-of-directories-quickly-in-java
+					File[] dirs = this.ioFile.listFiles(new FilenameFilter() {
+						@Override
+						public boolean accept(File parent, String filename) {
+							return new File(parent, filename).isDirectory();
+						}
+					});
+
+					if (dirs != null) {
+						for (File dir : dirs) {
+							FileWrapper dirFileWrapper = new FileWrapper(null, dir);
+							fileWrappers.addAll(
+								dirFileWrapper.listFiles(client, filenameFilter, fileFilter, recursive));
+						}
+					}
 				}
 			}
 		}
@@ -181,29 +302,27 @@ public class FileWrapper {
 	}
 
 
-	private FileWrapper[] toFileWrapperArray(S3List s3List) {
-		if (s3List == null) {
-			return null;
-		}
-
+	private List<FileWrapper> toFileWrapperList(S3List s3List) {
 		List<FileWrapper> fileWrapperList = new ArrayList<FileWrapper>();
 
-		Map<String, S3File> dirs = s3List.getDirs();
-		for (S3File s3File : dirs.values()) {
-			AmazonS3URI directoryUri = s3File.getS3Uri();
-			String directoryName = S3Utils.getDirectoryName(directoryUri);
+		if (s3List != null) {
+			Map<String, S3File> dirs = s3List.getDirs();
+			for (S3File s3File : dirs.values()) {
+				AmazonS3URI directoryUri = s3File.getS3Uri();
+				String directoryName = S3Utils.getDirectoryName(directoryUri);
 
-			fileWrapperList.add(new FileWrapper(directoryUri, new File(this.ioFile, directoryName)));
+				fileWrapperList.add(new FileWrapper(directoryUri, new File(this.ioFile, directoryName)));
+			}
+
+			Map<String, S3File> files = s3List.getFiles();
+			for (S3File s3File : files.values()) {
+				AmazonS3URI fileUri = s3File.getS3Uri();
+				String filename = S3Utils.getFilename(fileUri);
+
+				fileWrapperList.add(new FileWrapper(fileUri, new File(this.ioFile, filename)));
+			}
 		}
 
-		Map<String, S3File> files = s3List.getFiles();
-		for (S3File s3File : files.values()) {
-			AmazonS3URI fileUri = s3File.getS3Uri();
-			String filename = S3Utils.getFilename(fileUri);
-
-			fileWrapperList.add(new FileWrapper(fileUri, new File(this.ioFile, filename)));
-		}
-
-		return fileWrapperList.toArray(new FileWrapper[fileWrapperList.size()]);
+		return fileWrapperList;
 	}
 }
