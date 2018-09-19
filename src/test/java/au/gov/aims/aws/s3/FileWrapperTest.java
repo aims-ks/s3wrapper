@@ -83,6 +83,35 @@ public class FileWrapperTest extends S3TestBase {
 		}
 	}
 
+	@Test
+	public void testListFilesGetParent() throws Exception {
+		AmazonS3URI s3Uri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "s3wrapper/FileWrapper/file.txt");
+		File ioFile = new File("/tmp/s3wrapper/FileWrapper/file.txt");
+		FileWrapper fileWrapper = new FileWrapper(s3Uri, ioFile);
+
+		Assert.assertNotNull("The file wrapper is null", fileWrapper);
+
+		FileWrapper parentFileWrapper = fileWrapper.getParent();
+		Assert.assertNotNull("The parent file wrapper is null", parentFileWrapper);
+
+		Assert.assertEquals("", new File("/tmp/s3wrapper/FileWrapper"), parentFileWrapper.getFile());
+		Assert.assertEquals("", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "s3wrapper/FileWrapper/"), parentFileWrapper.getS3URI());
+
+
+		FileWrapper grandParentFileWrapper = parentFileWrapper.getParent();
+		Assert.assertNotNull("The grand parent file wrapper is null", grandParentFileWrapper);
+
+		Assert.assertEquals("", new File("/tmp/s3wrapper"), grandParentFileWrapper.getFile());
+		Assert.assertEquals("", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "s3wrapper/"), grandParentFileWrapper.getS3URI());
+
+
+		FileWrapper grandGrandParentFileWrapper = grandParentFileWrapper.getParent();
+		Assert.assertNotNull("The grand grand parent file wrapper is null", grandGrandParentFileWrapper);
+
+		Assert.assertEquals("", new File("/tmp"), grandGrandParentFileWrapper.getFile());
+		Assert.assertEquals("", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "/"), grandGrandParentFileWrapper.getS3URI());
+	}
+
 	/**
 	 * Upload a file to S3, then download it to see if it has changed.
 	 * NOTE: The resource file "aws-credentials.properties" must be set before running this test.
