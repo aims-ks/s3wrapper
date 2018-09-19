@@ -32,7 +32,6 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.FilenameFilter;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Pattern;
 
 public class ListManager {
@@ -76,8 +75,12 @@ public class ListManager {
 		// See: https://www.programcreek.com/java-api-examples/?api=com.amazonaws.services.s3.model.ListObjectsRequest
 		ListObjectsRequest listObjectsRequest = new ListObjectsRequest()
 			.withBucketName(s3Uri.getBucket())
-			.withPrefix(s3Uri.getKey())
-			.withDelimiter("/");
+			.withPrefix(s3Uri.getKey());
+
+		if (!recursive) {
+			listObjectsRequest = listObjectsRequest.withDelimiter("/");
+		}
+
 		ObjectListing objectListing = client.getS3().listObjects(listObjectsRequest);
 
 		// See: https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/examples-s3-buckets.html
@@ -121,24 +124,38 @@ public class ListManager {
 				if (!directory.endsWith("/")) {
 					directory += "/";
 				}
-
 				AmazonS3URI fileS3Uri = S3Utils.getS3URI(s3Uri.getBucket(), directory);
-				s3List.putDir(new S3File(fileS3Uri));
+
+				boolean selected = false;
+				if (filenameFilter != null) {
+					String parentKey = S3Utils.getParentUri(fileS3Uri).getKey();
+					if (parentKey == null) {
+						parentKey = "";
+					}
+					selected = filenameFilter.accept(new File(parentKey), S3Utils.getDirectoryName(fileS3Uri));
+				} else if (fileFilter != null) {
+					String fileKey = fileS3Uri.getKey();
+					if (fileKey == null) {
+						fileKey = "";
+					}
+					selected = fileFilter.accept(new File(fileKey));
+				} else if (filter != null) {
+					String dirName = S3Utils.getDirectoryName(fileS3Uri);
+					if (dirName != null) {
+						selected = filter.matcher(dirName).matches();
+					}
+				} else {
+					selected = true;
+				}
+
+				if (selected) {
+					s3List.putDir(new S3File(fileS3Uri));
+				}
 			}
 
 			listIsTruncated = objectListing.isTruncated();
 			if (listIsTruncated) {
 				objectListing = client.getS3().listNextBatchOfObjects(objectListing);
-			}
-		}
-
-		if (recursive) {
-			Map<String, S3File> dirs = s3List.getDirs();
-			if (dirs != null && !dirs.isEmpty()) {
-				for (S3File dir : dirs.values()) {
-					s3List.putAll(
-						ListManager.ls(client, dir.getS3Uri(), filenameFilter, fileFilter, recursive));
-				}
 			}
 		}
 

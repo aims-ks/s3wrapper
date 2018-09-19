@@ -186,74 +186,20 @@ public class FileWrapper {
 	}
 
 	private List<FileWrapper> listFiles(S3Client client, FilenameFilter filenameFilter, FileFilter fileFilter, boolean recursive) {
-		List<FileWrapper> fileWrappers = listFilesRecursive(client, filenameFilter, fileFilter, recursive);
-
-		if (fileWrappers != null && !fileWrappers.isEmpty()) {
-			if (client != null && this.s3URI != null) {
-				// Remove directories that doesnt match
-				if (filenameFilter != null || fileFilter != null) {
-					List<FileWrapper> filteredFileWrappers = new ArrayList<FileWrapper>();
-					for (FileWrapper fileWrapper : fileWrappers) {
-						boolean selected = false;
-						if (fileWrapper.isDirectory()) {
-							File ioFile = fileWrapper.getFile();
-							if (filenameFilter != null) {
-								selected = filenameFilter.accept(ioFile.getParentFile(), ioFile.getName());
-							} else if (fileFilter != null) {
-								selected = fileFilter.accept(ioFile);
-							}
-						} else {
-							selected = true;
-						}
-
-						if (selected) {
-							filteredFileWrappers.add(fileWrapper);
-						}
-					}
-
-					fileWrappers = filteredFileWrappers;
-				}
-			}
-		}
-
-		return fileWrappers;
-	}
-
-	private List<FileWrapper> listFilesRecursive(S3Client client, FilenameFilter filenameFilter, FileFilter fileFilter, boolean recursive) {
 		List<FileWrapper> fileWrappers = null;
 
 		if (client != null && this.s3URI != null) {
-			// NOTE: We can't use ListManager.ls(... recursive) here
-			//   because the S3URI needs to be linked with their ioFile.
-			//   It's much easier to do the recursion locally rather than
-			//   reverse engineer what the ioFile path should be for a
-			//   given (possibly quite deep) S3URI.
 			S3List s3List;
 			if (filenameFilter != null) {
-				s3List = ListManager.ls(client, this.s3URI, filenameFilter);
+				s3List = ListManager.ls(client, this.s3URI, filenameFilter, recursive);
 			} else if (fileFilter != null) {
-				s3List = ListManager.ls(client, this.s3URI, fileFilter);
+				s3List = ListManager.ls(client, this.s3URI, fileFilter, recursive);
 			} else {
-				s3List = ListManager.ls(client, this.s3URI);
+				s3List = ListManager.ls(client, this.s3URI, recursive);
 			}
 
 			if (s3List != null) {
 				fileWrappers = this.toFileWrapperList(s3List);
-
-				if (recursive) {
-					Map<String, S3File> dirs = s3List.getDirs();
-					if (dirs != null && !dirs.isEmpty()) {
-						for (S3File dir : dirs.values()) {
-							AmazonS3URI dirS3URI = dir.getS3Uri();
-							String dirName = S3Utils.getDirectoryName(dirS3URI);
-							File dirFile = new File(this.ioFile, dirName);
-							FileWrapper dirFileWrapper = new FileWrapper(dirS3URI, dirFile);
-
-							fileWrappers.addAll(
-								dirFileWrapper.listFiles(client, filenameFilter, fileFilter, recursive));
-						}
-					}
-				}
 			}
 
 		} else if (this.ioFile != null) {
@@ -306,20 +252,27 @@ public class FileWrapper {
 		List<FileWrapper> fileWrapperList = new ArrayList<FileWrapper>();
 
 		if (s3List != null) {
+			String thisKey = this.s3URI == null ? "" : this.s3URI.getKey();
+			if (thisKey == null) {
+				thisKey = "";
+			}
+
 			Map<String, S3File> dirs = s3List.getDirs();
 			for (S3File s3File : dirs.values()) {
-				AmazonS3URI directoryUri = s3File.getS3Uri();
-				String directoryName = S3Utils.getDirectoryName(directoryUri);
+				AmazonS3URI dirUri = s3File.getS3Uri();
+				String dirKey = dirUri.getKey();
+				String dirKeySuffix = dirKey.substring(thisKey.length());
 
-				fileWrapperList.add(new FileWrapper(directoryUri, new File(this.ioFile, directoryName)));
+				fileWrapperList.add(new FileWrapper(dirUri, new File(this.ioFile, dirKeySuffix)));
 			}
 
 			Map<String, S3File> files = s3List.getFiles();
 			for (S3File s3File : files.values()) {
 				AmazonS3URI fileUri = s3File.getS3Uri();
-				String filename = S3Utils.getFilename(fileUri);
+				String fileKey = fileUri.getKey();
+				String fileKeySuffix = fileKey.substring(thisKey.length());
 
-				fileWrapperList.add(new FileWrapper(fileUri, new File(this.ioFile, filename)));
+				fileWrapperList.add(new FileWrapper(fileUri, new File(this.ioFile, fileKeySuffix)));
 			}
 		}
 

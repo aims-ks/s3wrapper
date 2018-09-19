@@ -244,6 +244,7 @@ public class FileWrapperTest extends S3TestBase {
 		try (S3Client client = super.openS3Client()) {
 			super.setupBucket(client);
 
+			// NOTE: listFiles recursive do NOT list folders (it's a "feature" of the S3 library)
 			List<FileWrapper> fileWrapperList = rootFileWrapper.listFiles(client, new FilenameFilter() {
 				@Override
 				public boolean accept(File dir, String filename) {
@@ -258,11 +259,7 @@ public class FileWrapperTest extends S3TestBase {
 				String filename = fileWrapper.getFile().getName();
 
 
-				if ("bin".equals(filename)) {
-					Assert.assertEquals("The file was not as expected", new File(ioFile, "bin"), fileWrapper.getFile());
-					Assert.assertEquals("The file was not as expected", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "bin/"), fileWrapper.getS3URI());
-
-				} else if ("random_100.bin".equals(filename)) {
+				if ("random_100.bin".equals(filename)) {
 					Assert.assertEquals("The file was not as expected", new File(ioFile, "bin/random_100.bin"), fileWrapper.getFile());
 					Assert.assertEquals("The file was not as expected", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "bin/random_100.bin"), fileWrapper.getS3URI());
 
@@ -284,7 +281,7 @@ public class FileWrapperTest extends S3TestBase {
 				}
 			}
 
-			Assert.assertEquals("Wrong number of files in the bucket.", 5, fileWrapperList.size());
+			Assert.assertEquals("Wrong number of files in the bucket.", 4, fileWrapperList.size());
 		}
 
 		// Cleanup at the end of the test
