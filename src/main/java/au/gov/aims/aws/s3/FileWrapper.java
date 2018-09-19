@@ -55,6 +55,14 @@ public class FileWrapper {
 		return new FileWrapper(S3Utils.getParentUri(this.s3URI), this.ioFile.getParentFile());
 	}
 
+	public boolean isDirectory() {
+		if (this.s3URI != null) {
+			return this.s3URI.getKey().endsWith("/");
+		}
+
+		return this.ioFile.isDirectory();
+	}
+
 	public File getFile() {
 		return this.ioFile;
 	}
