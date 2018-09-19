@@ -41,14 +41,18 @@ public class FileWrapper {
 	private AmazonS3URI s3URI;
 	private File ioFile;
 
-	public FileWrapper(AmazonS3URI s3URI, File iOFile) {
-		this.ioFile = iOFile;
+	public FileWrapper(AmazonS3URI s3URI, File ioFile) {
+		this.ioFile = ioFile;
 		this.s3URI = s3URI;
 	}
 
 	public FileWrapper(FileWrapper parent, String pathname) {
 		this.ioFile = new File(parent.ioFile, pathname);
 		this.s3URI = S3Utils.getS3URI(parent.s3URI.getBucket(), parent.s3URI.getKey() + "/" + pathname);
+	}
+
+	public FileWrapper getParent() {
+		return new FileWrapper(S3Utils.getParentUri(this.s3URI), this.ioFile.getParentFile());
 	}
 
 	public File getFile() {
