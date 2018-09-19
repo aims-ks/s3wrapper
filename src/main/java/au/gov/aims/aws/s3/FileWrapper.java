@@ -278,4 +278,22 @@ public class FileWrapper {
 
 		return fileWrapperList;
 	}
+
+	@Override
+	public String toString() {
+		StringBuilder sb = new StringBuilder();
+
+		if (this.s3URI != null) {
+			sb.append(this.s3URI.toString());
+			if (this.ioFile != null) {
+				sb.append(" (")
+					.append(this.ioFile.getAbsolutePath())
+					.append(")");
+			}
+		} else if (this.ioFile != null) {
+			sb.append(this.ioFile.getAbsolutePath());
+		}
+
+		return sb.toString();
+	}
 }
