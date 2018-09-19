@@ -47,12 +47,17 @@ public class FileWrapper {
 	}
 
 	public FileWrapper(FileWrapper parent, String pathname) {
-		this.ioFile = new File(parent.ioFile, pathname);
-		this.s3URI = S3Utils.getS3URI(parent.s3URI.getBucket(), parent.s3URI.getKey() + "/" + pathname);
+		this.ioFile = parent.ioFile == null ? null :
+			new File(parent.ioFile, pathname);
+
+		this.s3URI = parent.s3URI == null ? null :
+			S3Utils.getS3URI(parent.s3URI.getBucket(), parent.s3URI.getKey() + "/" + pathname);
 	}
 
 	public FileWrapper getParent() {
-		return new FileWrapper(S3Utils.getParentUri(this.s3URI), this.ioFile.getParentFile());
+		return new FileWrapper(
+			S3Utils.getParentUri(this.s3URI),
+			this.ioFile == null ? null : this.ioFile.getParentFile());
 	}
 
 	public boolean isDirectory() {
@@ -60,7 +65,11 @@ public class FileWrapper {
 			return this.s3URI.getKey().endsWith("/");
 		}
 
-		return this.ioFile.isDirectory();
+		if (this.ioFile != null) {
+			return this.ioFile.isDirectory();
+		}
+
+		return false;
 	}
 
 	public File getFile() {
@@ -77,7 +86,7 @@ public class FileWrapper {
 	}
 
 	public File downloadFile(S3Client client, boolean forceDownload) throws IOException {
-		if (client != null && this.s3URI != null) {
+		if (client != null && this.s3URI != null && this.ioFile != null) {
 			boolean downloadedNeeded = false;
 
 			if (forceDownload) {
@@ -109,14 +118,14 @@ public class FileWrapper {
 	}
 
 	private void forceDownloadFile(S3Client client) throws IOException {
-		if (client != null && this.s3URI != null) {
+		if (client != null && this.s3URI != null && this.ioFile != null) {
 			DownloadManager.download(client, this.s3URI, this.ioFile);
 		}
 	}
 
 
 	public void uploadFile(S3Client client) throws IOException, InterruptedException {
-		if (client != null && this.s3URI != null) {
+		if (client != null && this.s3URI != null && this.ioFile != null) {
 			UploadManager.upload(client, this.ioFile, this.s3URI);
 		}
 	}
@@ -137,7 +146,19 @@ public class FileWrapper {
 	private FileWrapper[] listFiles(S3Client client, FilenameFilter filenameFilter, FileFilter fileFilter) {
 		FileWrapper[] fileWrappers = null;
 
-		if (client == null || this.s3URI == null) {
+		if (client != null && this.s3URI != null) {
+			S3List s3List;
+			if (filenameFilter != null) {
+				s3List = ListManager.ls(client, this.s3URI, filenameFilter);
+			} else if (fileFilter != null) {
+				s3List = ListManager.ls(client, this.s3URI, fileFilter);
+			} else {
+				s3List = ListManager.ls(client, this.s3URI);
+			}
+
+			fileWrappers = this.toFileWrapperArray(s3List);
+
+		} else if (this.ioFile != null) {
 			File[] files;
 			if (filenameFilter != null) {
 				files = this.ioFile.listFiles(filenameFilter);
@@ -154,17 +175,6 @@ public class FileWrapper {
 					fileWrappers[i] = new FileWrapper(null, files[i]);
 				}
 			}
-		} else {
-			S3List s3List;
-			if (filenameFilter != null) {
-				s3List = ListManager.ls(client, this.s3URI, filenameFilter);
-			} else if (fileFilter != null) {
-				s3List = ListManager.ls(client, this.s3URI, fileFilter);
-			} else {
-				s3List = ListManager.ls(client, this.s3URI);
-			}
-
-			fileWrappers = this.toFileWrapperArray(s3List);
 		}
 
 		return fileWrappers;
