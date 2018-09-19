@@ -72,6 +72,18 @@ public class FileWrapper {
 		return false;
 	}
 
+	public boolean exists(S3Client client) {
+		if (this.s3URI != null) {
+			return client.getS3().doesObjectExist(this.s3URI.getBucket(), this.s3URI.getKey());
+		}
+
+		if (this.ioFile != null) {
+			return this.ioFile.exists();
+		}
+
+		return false;
+	}
+
 	public String getFilename() {
 		if (this.s3URI != null) {
 			return S3Utils.getFilename(this.s3URI);
