@@ -124,6 +124,14 @@ public class FileWrapper implements Comparable<FileWrapper> {
 		return null;
 	}
 
+	public Long getLastModified(S3Client client) {
+		if (this.ioFile != null && this.ioFile.exists()) {
+			return this.ioFile.lastModified();
+		}
+
+		return this.getS3LastModified(client);
+	}
+
 	public boolean isOutdated(S3Client client) {
 		if (client == null || this.s3URI == null || this.ioFile == null) {
 			return false;
