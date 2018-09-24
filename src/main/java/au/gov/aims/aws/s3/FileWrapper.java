@@ -124,6 +124,22 @@ public class FileWrapper implements Comparable<FileWrapper> {
 		return null;
 	}
 
+	public boolean isOutdated(S3Client client) {
+		if (client == null || this.s3URI == null || this.ioFile == null) {
+			return false;
+		}
+
+		if (!this.ioFile.exists()) {
+			return true;
+		}
+
+		Long s3LastModified = this.getS3LastModified(client);
+		if (s3LastModified == null) {
+			return false;
+		}
+
+		return this.ioFile.lastModified() < s3LastModified;
+	}
 
 	public File downloadFile(S3Client client) throws IOException {
 		return this.downloadFile(client, false);
@@ -140,16 +156,7 @@ public class FileWrapper implements Comparable<FileWrapper> {
 				//   (we won't download a whole folder)
 				String filename = S3Utils.getFilename(this.s3URI);
 				if (filename != null && !filename.isEmpty()) {
-					if (!this.ioFile.exists()) {
-						downloadedNeeded = true;
-					} else {
-						S3List s3List = ListManager.ls(client, this.s3URI);
-						S3File s3File = s3List.getFiles().get(this.s3URI.getKey());
-
-						if (this.ioFile.lastModified() < s3File.getLastModified()) {
-							downloadedNeeded = true;
-						}
-					}
+					downloadedNeeded = this.isOutdated(client);
 				}
 			}
 
