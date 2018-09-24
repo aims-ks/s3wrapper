@@ -40,6 +40,7 @@ import java.util.Map;
 public class FileWrapper {
 	private AmazonS3URI s3URI;
 	private File ioFile;
+	private boolean downloaded = false;
 
 	public FileWrapper(AmazonS3URI s3URI, File ioFile) {
 		this.ioFile = ioFile;
@@ -144,9 +145,21 @@ public class FileWrapper {
 	private void forceDownloadFile(S3Client client) throws IOException {
 		if (client != null && this.s3URI != null && this.ioFile != null) {
 			DownloadManager.download(client, this.s3URI, this.ioFile);
+			this.downloaded = true;
 		}
 	}
 
+	/**
+	 * Delete the file if it was downloaded from S3.
+	 * @return True if the file was deleted from disk. False otherwise.
+	 */
+	public boolean cleanup() {
+		if (this.downloaded && this.ioFile != null && this.ioFile.exists()) {
+			return this.ioFile.delete();
+		}
+
+		return false;
+	}
 
 	public void uploadFile(S3Client client) throws IOException, InterruptedException {
 		if (client != null && this.s3URI != null && this.ioFile != null) {
