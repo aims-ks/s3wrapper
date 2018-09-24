@@ -33,11 +33,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * This class can be used to handle both io.File and S3File.
  */
-public class FileWrapper {
+public class FileWrapper implements Comparable<FileWrapper> {
 	private AmazonS3URI s3URI;
 	private File ioFile;
 	private boolean downloaded = false;
@@ -320,5 +321,68 @@ public class FileWrapper {
 		}
 
 		return sb.toString();
+	}
+
+	@Override
+	public int compareTo(FileWrapper other) {
+		// Both S3 URI are not null, compare them
+		if (this.s3URI != null && other.s3URI != null) {
+			return this.s3URI.toString().compareTo(other.s3URI.toString());
+		}
+
+		// Both File are not null, compare their absolute path
+		if (this.ioFile != null && other.ioFile != null) {
+			return this.ioFile.getAbsolutePath().compareTo(other.ioFile.getAbsolutePath());
+		}
+
+		// Only "this" has a S3 URI, put "this" before "other"
+		if (this.s3URI != null) {
+			return -1;
+		}
+		if (other.s3URI != null) {
+			return 1;
+		}
+
+		// Only "this" has a file, put "this" before "other"
+		if (this.ioFile != null) {
+			return -1;
+		}
+		if (other.ioFile != null) {
+			return 1;
+		}
+
+		// S3 URI and File are null on both object.
+		// This should not happen.
+		// Just in case, return 1.
+		// Do not return 0, we don't want them to be considered equals.
+		return 1;
+	}
+
+	@Override
+	public boolean equals(Object other) {
+		if (this == other) {
+			return true;
+		}
+		if (other == null || this.getClass() != other.getClass()) {
+			return false;
+		}
+
+		FileWrapper otherWrapper = (FileWrapper) other;
+
+		String s3Str = this.s3URI == null ? null : this.s3URI.toString(),
+			otherS3Str = otherWrapper.s3URI == null ? null : otherWrapper.s3URI.toString(),
+			ioPath = this.ioFile == null ? null : this.ioFile.getAbsolutePath(),
+			otherIoPath = otherWrapper.ioFile == null ? null : otherWrapper.ioFile.getAbsolutePath();
+
+		return Objects.equals(s3Str, otherS3Str) &&
+				Objects.equals(ioPath, otherIoPath);
+	}
+
+	@Override
+	public int hashCode() {
+		String s3Str = this.s3URI == null ? null : this.s3URI.toString(),
+			ioPath = this.ioFile == null ? null : this.ioFile.getAbsolutePath();
+
+		return Objects.hash(s3Str, ioPath);
 	}
 }
