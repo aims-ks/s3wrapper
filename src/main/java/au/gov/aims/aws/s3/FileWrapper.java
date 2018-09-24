@@ -106,6 +106,24 @@ public class FileWrapper implements Comparable<FileWrapper> {
 		return this.s3URI;
 	}
 
+	public S3File getS3File(S3Client client) {
+		if (client != null && this.s3URI != null && this.ioFile != null) {
+			S3List s3List = ListManager.ls(client, this.s3URI);
+			return s3List.getFiles().get(this.s3URI.getKey());
+		}
+
+		return null;
+	}
+
+	public Long getS3LastModified(S3Client client) {
+		S3File s3File = this.getS3File(client);
+		if (s3File != null) {
+			return s3File.getLastModified();
+		}
+
+		return null;
+	}
+
 
 	public File downloadFile(S3Client client) throws IOException {
 		return this.downloadFile(client, false);
