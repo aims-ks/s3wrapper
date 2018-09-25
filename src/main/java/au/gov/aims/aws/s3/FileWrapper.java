@@ -169,6 +169,9 @@ public class FileWrapper implements Comparable<FileWrapper> {
 			}
 
 			if (downloadedNeeded) {
+				if (!client.getS3().doesObjectExist(this.s3URI.getBucket(), this.s3URI.getKey())) {
+					return null;
+				}
 				this.forceDownloadFile(client);
 			}
 		}
