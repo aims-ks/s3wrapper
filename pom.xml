@@ -6,7 +6,7 @@
 
 	<groupId>au.gov.aims</groupId>
 	<artifactId>s3wrapper</artifactId>
-	<version>0.3.15</version>
+	<version>0.3.16</version>
 	<packaging>jar</packaging>
 	<name>S3 Wrapper</name>
 	<description>S3 Wrapper made to simplify the Amazon S3 API.</description>
@@ -26,7 +26,7 @@
 		<dependency>
 			<groupId>org.json</groupId>
 			<artifactId>json</artifactId>
-			<version>20180813</version>
+			<version>20160810</version>
 		</dependency>
 
 		<dependency>

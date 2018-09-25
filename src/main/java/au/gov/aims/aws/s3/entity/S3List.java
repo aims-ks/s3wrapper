@@ -73,11 +73,11 @@ public class S3List {
 
 		JSONObject json = new JSONObject();
 
-		if (!jsonDirs.isEmpty()) {
+		if (jsonDirs.length() > 0) {
 			json.put("directories", jsonDirs);
 		}
 
-		if (!jsonFiles.isEmpty()) {
+		if (jsonFiles.length() > 0) {
 			json.put("files", jsonFiles);
 		}
 

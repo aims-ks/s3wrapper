@@ -208,23 +208,31 @@ public class FileWrapperTest extends S3TestBase {
 
 		FileWrapper parentFileWrapper = fileWrapper.getParent();
 		Assert.assertNotNull("The parent file wrapper is null", parentFileWrapper);
-
-		Assert.assertEquals("", new File("/tmp/s3wrapper/FileWrapper"), parentFileWrapper.getFile());
-		Assert.assertEquals("", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "s3wrapper/FileWrapper/"), parentFileWrapper.getS3URI());
+		Assert.assertEquals("The parent file is wrong", new File("/tmp/s3wrapper/FileWrapper"), parentFileWrapper.getFile());
+		Assert.assertEquals("The parent S3URI is wrong", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "s3wrapper/FileWrapper/"), parentFileWrapper.getS3URI());
 
 
 		FileWrapper grandParentFileWrapper = parentFileWrapper.getParent();
 		Assert.assertNotNull("The grand parent file wrapper is null", grandParentFileWrapper);
-
-		Assert.assertEquals("", new File("/tmp/s3wrapper"), grandParentFileWrapper.getFile());
-		Assert.assertEquals("", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "s3wrapper/"), grandParentFileWrapper.getS3URI());
+		Assert.assertEquals("The grand parent file is wrong", new File("/tmp/s3wrapper"), grandParentFileWrapper.getFile());
+		Assert.assertEquals("The grand parent S3URI is wrong", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "s3wrapper/"), grandParentFileWrapper.getS3URI());
 
 
 		FileWrapper grandGrandParentFileWrapper = grandParentFileWrapper.getParent();
 		Assert.assertNotNull("The grand grand parent file wrapper is null", grandGrandParentFileWrapper);
+		Assert.assertEquals("The grand grand parent file is wrong", new File("/tmp"), grandGrandParentFileWrapper.getFile());
+		Assert.assertEquals("The grand grand parent S3URI is wrong", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "/"), grandGrandParentFileWrapper.getS3URI());
 
-		Assert.assertEquals("", new File("/tmp"), grandGrandParentFileWrapper.getFile());
-		Assert.assertEquals("", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "/"), grandGrandParentFileWrapper.getS3URI());
+
+		s3Uri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "file.txt");
+		ioFile = new File("/file.txt");
+		fileWrapper = new FileWrapper(s3Uri, ioFile);
+
+		parentFileWrapper = fileWrapper.getParent();
+		FileWrapper childFileWrapper = new FileWrapper(parentFileWrapper, "file.json");
+		Assert.assertNotNull("The child file wrapper is null", childFileWrapper);
+		Assert.assertEquals("The child file wrapper file is wrong", new File("/file.json"), childFileWrapper.getFile());
+		Assert.assertEquals("The child file wrapper S3URI is wrong", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "file.json"), childFileWrapper.getS3URI());
 	}
 
 	/**
