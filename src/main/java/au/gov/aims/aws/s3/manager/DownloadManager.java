@@ -118,6 +118,7 @@ public class DownloadManager {
 				s3File = new S3File(sourceUri, metadata);
 				s3File.setLocalFile(destinationFile);
 
+				LOGGER.debug(String.format("Downloading %s to %s", sourceUri, destinationFile));
 				s3FileInputStream = s3Object.getObjectContent();
 				if (s3FileInputStream != null) {
 					FileUtils.copyToFile(s3FileInputStream, destinationFile);

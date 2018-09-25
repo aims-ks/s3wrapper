@@ -164,6 +164,7 @@ public class UploadManager {
 
 			// TransferManager processes all transfers asynchronously,
 			// so this call returns immediately.
+			LOGGER.debug(String.format("Uploading %s to %s", sourceFile, destinationUri));
 			Upload upload = transferManager.upload(putRequest);
 
 			LOGGER.debug("Upload started...");
