@@ -52,8 +52,17 @@ public class FileWrapper implements Comparable<FileWrapper> {
 		this.ioFile = parent.ioFile == null ? null :
 			new File(parent.ioFile, pathname);
 
-		this.s3URI = parent.s3URI == null ? null :
-			S3Utils.getS3URI(parent.s3URI.getBucket(), parent.s3URI.getKey() + "/" + pathname);
+		this.s3URI = null;
+		if (parent.s3URI != null) {
+			String childKey = pathname;
+
+			String parentKey = parent.s3URI.getKey();
+			if (parentKey != null && !parentKey.isEmpty()) {
+				childKey = parentKey + "/" + pathname;
+			}
+
+			this.s3URI = S3Utils.getS3URI(parent.s3URI.getBucket(), childKey);
+		}
 	}
 
 	public FileWrapper getParent() {
