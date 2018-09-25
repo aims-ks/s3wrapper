@@ -183,12 +183,32 @@ public class FileWrapper implements Comparable<FileWrapper> {
 		}
 	}
 
+	public boolean isOriginalOnS3() {
+		if (this.s3URI == null) {
+			return false;
+		}
+
+		if (this.ioFile == null) {
+			return true;
+		}
+
+		return !this.ioFile.exists() || this.downloaded;
+	}
+
+	public boolean isOriginalOnDisk() {
+		if (this.ioFile == null) {
+			return false;
+		}
+
+		return !this.isOriginalOnS3();
+	}
+
 	/**
 	 * Delete the file if it was downloaded from S3.
 	 * @return True if the file was deleted from disk. False otherwise.
 	 */
 	public boolean cleanup() {
-		if (this.downloaded && this.ioFile != null && this.ioFile.exists()) {
+		if (this.isOriginalOnS3() && this.ioFile != null && this.ioFile.exists()) {
 			return this.ioFile.delete();
 		}
 
