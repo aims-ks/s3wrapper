@@ -34,6 +34,43 @@ public class FileWrapperTest extends S3TestBase {
 	private static final Logger LOGGER = Logger.getLogger(FileWrapperTest.class);
 
 	@Test
+	public void testGetParent() throws Exception {
+		AmazonS3URI s3Uri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "s3wrapper/FileWrapper/file.txt");
+		File ioFile = new File("/tmp/s3wrapper/FileWrapper/file.txt");
+		FileWrapper fileWrapper = new FileWrapper(s3Uri, ioFile);
+
+		Assert.assertNotNull("The file wrapper is null", fileWrapper);
+
+		FileWrapper parentFileWrapper = fileWrapper.getParent();
+		Assert.assertNotNull("The parent file wrapper is null", parentFileWrapper);
+		Assert.assertEquals("The parent file is wrong", new File("/tmp/s3wrapper/FileWrapper"), parentFileWrapper.getFile());
+		Assert.assertEquals("The parent S3URI is wrong", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "s3wrapper/FileWrapper/"), parentFileWrapper.getS3URI());
+
+
+		FileWrapper grandParentFileWrapper = parentFileWrapper.getParent();
+		Assert.assertNotNull("The grand parent file wrapper is null", grandParentFileWrapper);
+		Assert.assertEquals("The grand parent file is wrong", new File("/tmp/s3wrapper"), grandParentFileWrapper.getFile());
+		Assert.assertEquals("The grand parent S3URI is wrong", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "s3wrapper/"), grandParentFileWrapper.getS3URI());
+
+
+		FileWrapper grandGrandParentFileWrapper = grandParentFileWrapper.getParent();
+		Assert.assertNotNull("The grand grand parent file wrapper is null", grandGrandParentFileWrapper);
+		Assert.assertEquals("The grand grand parent file is wrong", new File("/tmp"), grandGrandParentFileWrapper.getFile());
+		Assert.assertEquals("The grand grand parent S3URI is wrong", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "/"), grandGrandParentFileWrapper.getS3URI());
+
+
+		s3Uri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "file.txt");
+		ioFile = new File("/file.txt");
+		fileWrapper = new FileWrapper(s3Uri, ioFile);
+
+		parentFileWrapper = fileWrapper.getParent();
+		FileWrapper childFileWrapper = new FileWrapper(parentFileWrapper, "file.json");
+		Assert.assertNotNull("The child file wrapper is null", childFileWrapper);
+		Assert.assertEquals("The child file wrapper file is wrong", new File("/file.json"), childFileWrapper.getFile());
+		Assert.assertEquals("The child file wrapper S3URI is wrong", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "file.json"), childFileWrapper.getS3URI());
+	}
+
+	@Test
 	public void testListFilesWithoutS3() throws Exception {
 		URL ioFileUrl = FileWrapperTest.class.getClassLoader().getResource("bucket_files");
 		File ioFile = new File(ioFileUrl.toURI());
@@ -198,41 +235,57 @@ public class FileWrapperTest extends S3TestBase {
 		Assert.assertEquals("Wrong number of files in the bucket.", 5, fileWrapperList.size());
 	}
 
+
+
+	/**
+	 * Upload a file to S3, then download it to see if it has changed.
+	 * NOTE: The resource file "aws-credentials.properties" must be set before running this test.
+	 * @throws Exception If something goes wrong...
+	 */
 	@Test
-	public void testListFilesGetParent() throws Exception {
-		AmazonS3URI s3Uri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "s3wrapper/FileWrapper/file.txt");
-		File ioFile = new File("/tmp/s3wrapper/FileWrapper/file.txt");
-		FileWrapper fileWrapper = new FileWrapper(s3Uri, ioFile);
+	public void testListFilesInFolder() throws Exception {
+		AmazonS3URI s3Uri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "img/");
+		File ioFile = new File("/tmp/s3wrapper/FileWrapper/img");
+		FileWrapper imgFileWrapper = new FileWrapper(s3Uri, ioFile);
 
-		Assert.assertNotNull("The file wrapper is null", fileWrapper);
+		// Delete the folder on disk if it already exists
+		FileUtils.deleteDirectory(ioFile);
 
-		FileWrapper parentFileWrapper = fileWrapper.getParent();
-		Assert.assertNotNull("The parent file wrapper is null", parentFileWrapper);
-		Assert.assertEquals("The parent file is wrong", new File("/tmp/s3wrapper/FileWrapper"), parentFileWrapper.getFile());
-		Assert.assertEquals("The parent S3URI is wrong", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "s3wrapper/FileWrapper/"), parentFileWrapper.getS3URI());
+		try (S3Client client = super.openS3Client()) {
+			super.setupBucket(client);
 
-
-		FileWrapper grandParentFileWrapper = parentFileWrapper.getParent();
-		Assert.assertNotNull("The grand parent file wrapper is null", grandParentFileWrapper);
-		Assert.assertEquals("The grand parent file is wrong", new File("/tmp/s3wrapper"), grandParentFileWrapper.getFile());
-		Assert.assertEquals("The grand parent S3URI is wrong", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "s3wrapper/"), grandParentFileWrapper.getS3URI());
+			List<FileWrapper> fileWrapperList = imgFileWrapper.listFiles(client);
 
 
-		FileWrapper grandGrandParentFileWrapper = grandParentFileWrapper.getParent();
-		Assert.assertNotNull("The grand grand parent file wrapper is null", grandGrandParentFileWrapper);
-		Assert.assertEquals("The grand grand parent file is wrong", new File("/tmp"), grandGrandParentFileWrapper.getFile());
-		Assert.assertEquals("The grand grand parent S3URI is wrong", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "/"), grandGrandParentFileWrapper.getS3URI());
+			Assert.assertNotNull("The file list is null", fileWrapperList);
+
+			for (FileWrapper fileWrapper : fileWrapperList) {
+				String filename = fileWrapper.getFile().getName();
 
 
-		s3Uri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "file.txt");
-		ioFile = new File("/file.txt");
-		fileWrapper = new FileWrapper(s3Uri, ioFile);
+				if ("black.jpg".equals(filename)) {
+					Assert.assertEquals("The file was not as expected", new File(ioFile, "black.jpg"), fileWrapper.getFile());
+					Assert.assertEquals("The file was not as expected", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "img/black.jpg"), fileWrapper.getS3URI());
 
-		parentFileWrapper = fileWrapper.getParent();
-		FileWrapper childFileWrapper = new FileWrapper(parentFileWrapper, "file.json");
-		Assert.assertNotNull("The child file wrapper is null", childFileWrapper);
-		Assert.assertEquals("The child file wrapper file is wrong", new File("/file.json"), childFileWrapper.getFile());
-		Assert.assertEquals("The child file wrapper S3URI is wrong", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "file.json"), childFileWrapper.getS3URI());
+				} else if ("gradiant.jpg".equals(filename)) {
+					Assert.assertEquals("The file was not as expected", new File(ioFile, "gradiant.jpg"), fileWrapper.getFile());
+					Assert.assertEquals("The file was not as expected", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "img/gradiant.jpg"), fileWrapper.getS3URI());
+
+				} else if ("white.jpg".equals(filename)) {
+					Assert.assertEquals("The file was not as expected", new File(ioFile, "white.jpg"), fileWrapper.getFile());
+					Assert.assertEquals("The file was not as expected", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "img/white.jpg"), fileWrapper.getS3URI());
+
+
+				} else {
+					Assert.fail(String.format("Unexpected filename: '%s'", filename));
+				}
+			}
+
+			Assert.assertEquals("Wrong number of files in the 'img' folder.", 3, fileWrapperList.size());
+		}
+
+		// Cleanup at the end of the test
+		FileUtils.deleteDirectory(ioFile);
 	}
 
 	/**
