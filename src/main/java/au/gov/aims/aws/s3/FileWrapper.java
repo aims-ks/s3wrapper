@@ -41,7 +41,10 @@ import java.util.Objects;
 public class FileWrapper implements Comparable<FileWrapper> {
 	private AmazonS3URI s3URI;
 	private File ioFile;
+
+	// Flag to monitor if the file was downloaded from S3 or uploaded to S3
 	private boolean downloaded = false;
+	private boolean uploaded = false;
 
 	public FileWrapper(AmazonS3URI s3URI, File ioFile) {
 		this.ioFile = ioFile;
@@ -204,7 +207,7 @@ public class FileWrapper implements Comparable<FileWrapper> {
 			return true;
 		}
 
-		return !this.ioFile.exists() || this.downloaded;
+		return !this.ioFile.exists() || this.downloaded || this.uploaded;
 	}
 
 	public boolean isOriginalOnDisk() {
@@ -230,6 +233,7 @@ public class FileWrapper implements Comparable<FileWrapper> {
 	public void uploadFile(S3Client client) throws IOException, InterruptedException {
 		if (client != null && this.s3URI != null && this.ioFile != null) {
 			UploadManager.upload(client, this.ioFile, this.s3URI);
+			this.uploaded = true;
 		}
 	}
 

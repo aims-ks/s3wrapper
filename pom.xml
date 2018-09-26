@@ -6,7 +6,7 @@
 
 	<groupId>au.gov.aims</groupId>
 	<artifactId>s3wrapper</artifactId>
-	<version>0.3.17</version>
+	<version>0.3.18</version>
 	<packaging>jar</packaging>
 	<name>S3 Wrapper</name>
 	<description>S3 Wrapper made to simplify the Amazon S3 API.</description>
