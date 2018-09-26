@@ -137,7 +137,7 @@ public class FileWrapper implements Comparable<FileWrapper> {
 	}
 
 	public Long getLastModified(S3Client client) {
-		if (this.ioFile != null && this.ioFile.exists()) {
+		if (this.isOriginalOnDisk()) {
 			return this.ioFile.lastModified();
 		}
 
