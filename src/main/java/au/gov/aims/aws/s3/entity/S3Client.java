@@ -39,10 +39,18 @@ public class S3Client implements Closeable {
 	private AmazonS3 s3;
 
 	public static S3Client parse(File credentialsPropertiesFile) throws Exception {
+		if (credentialsPropertiesFile == null) {
+			return new S3Client();
+		}
+
 		return S3Client.parse(PropertiesLoader.load(credentialsPropertiesFile));
 	}
 
 	public static S3Client parse(Properties credentialsProperties) throws Exception {
+		if (credentialsProperties == null) {
+			return new S3Client();
+		}
+
 		if (!credentialsProperties.containsKey(AWS_ACCESS_KEY_PROPERTY)) {
 			throw new InvalidParameterException(
 				String.format("The credentials file doesn't contains the access key ID property.%n" +
