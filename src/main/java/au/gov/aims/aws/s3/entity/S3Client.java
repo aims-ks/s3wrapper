@@ -24,6 +24,7 @@ import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.AWSCredentialsProviderChain;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.auth.EC2ContainerCredentialsProviderWrapper;
 import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
 import com.amazonaws.auth.InstanceProfileCredentialsProvider;
 import com.amazonaws.auth.SystemPropertiesCredentialsProvider;
@@ -77,8 +78,11 @@ public class S3Client implements Closeable {
 	public S3Client() {
 		// Inspired from:
 		//   https://www.programcreek.com/java-api-examples/index.php?api=com.amazonaws.auth.EnvironmentVariableCredentialsProvider
+		// See:
+		//   https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/credentials.html
 		AWSCredentialsProvider[] providers = new AWSCredentialsProvider[] {
 			new EnvironmentVariableCredentialsProvider(),
+			new EC2ContainerCredentialsProviderWrapper(),
 			InstanceProfileCredentialsProvider.getInstance(),
 			new SystemPropertiesCredentialsProvider(),
 			new ProfileCredentialsProvider()
