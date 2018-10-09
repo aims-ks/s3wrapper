@@ -20,8 +20,13 @@ package au.gov.aims.aws.s3.entity;
 
 import au.gov.aims.aws.s3.PropertiesLoader;
 import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.auth.AWSCredentialsProviderChain;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
+import com.amazonaws.auth.InstanceProfileCredentialsProvider;
+import com.amazonaws.auth.SystemPropertiesCredentialsProvider;
 import com.amazonaws.auth.profile.ProfileCredentialsProvider;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
@@ -70,9 +75,18 @@ public class S3Client implements Closeable {
 	}
 
 	public S3Client() {
+		// Inspired from:
+		//   https://www.programcreek.com/java-api-examples/index.php?api=com.amazonaws.auth.EnvironmentVariableCredentialsProvider
+		AWSCredentialsProvider[] providers = new AWSCredentialsProvider[] {
+			new EnvironmentVariableCredentialsProvider(),
+			InstanceProfileCredentialsProvider.getInstance(),
+			new SystemPropertiesCredentialsProvider(),
+			new ProfileCredentialsProvider()
+		};
+
 		// Creates a "AmazonS3Client"
 		this.s3 = AmazonS3ClientBuilder.standard()
-				.withCredentials(new ProfileCredentialsProvider())
+				.withCredentials(new AWSCredentialsProviderChain(providers))
 				.build();
 	}
 
