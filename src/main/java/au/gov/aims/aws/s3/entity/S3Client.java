@@ -19,8 +19,10 @@
 package au.gov.aims.aws.s3.entity;
 
 import au.gov.aims.aws.s3.PropertiesLoader;
+import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.auth.profile.ProfileCredentialsProvider;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 
@@ -59,8 +61,15 @@ public class S3Client implements Closeable {
 			credentialsProperties.getProperty(AWS_SECRET_PROPERTY));
 	}
 
+	public S3Client() {
+		// Creates a "AmazonS3Client"
+		this.s3 = AmazonS3ClientBuilder.standard()
+				.withCredentials(new ProfileCredentialsProvider())
+				.build();
+	}
+
 	public S3Client(String accessKeyId, String secretAccessKey) {
-		BasicAWSCredentials awsCredentials =
+		AWSCredentials awsCredentials =
 				new BasicAWSCredentials(accessKeyId, secretAccessKey);
 
 		// Creates a "AmazonS3Client"
