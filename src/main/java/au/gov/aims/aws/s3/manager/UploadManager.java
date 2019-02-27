@@ -39,154 +39,154 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class UploadManager {
-	private static final Logger LOGGER = Logger.getLogger(UploadManager.class);
+    private static final Logger LOGGER = Logger.getLogger(UploadManager.class);
 
-	// S3 have a 5 GB limit for file upload in a single request.
-	// Larger files needs to be uploaded by chunks (minimum file size of 5 MB).
-	// The following limit is used to determine if a file should be uploaded at once
-	// or using the multi threaded multipart upload.
-	//   IMPORTANT: Must be between 5 MB and 5 GB
-	private static final long S3_MULTIPART_UPLOAD_FILESIZE_THRESHOLD = 500L * Constants.MB;
+    // S3 have a 5 GB limit for file upload in a single request.
+    // Larger files needs to be uploaded by chunks (minimum file size of 5 MB).
+    // The following limit is used to determine if a file should be uploaded at once
+    // or using the multi threaded multipart upload.
+    //   IMPORTANT: Must be between 5 MB and 5 GB
+    private static final long S3_MULTIPART_UPLOAD_FILESIZE_THRESHOLD = 500L * Constants.MB;
 
-	// Set the size of upload parts.
-	// - Small parts will results in large amount of requests, increasing S3 PUT cost.
-	// - Large parts may results in less concurrent upload and larger retry when a part fail (?).
-	// Default: 5 MB
-	//   TransferManagerConfiguration.DEFAULT_MINIMUM_UPLOAD_PART_SIZE = 5 * MB;
-	private static final long S3_MULTIPART_UPLOAD_PART_SIZE = 100L * Constants.MB;
+    // Set the size of upload parts.
+    // - Small parts will results in large amount of requests, increasing S3 PUT cost.
+    // - Large parts may results in less concurrent upload and larger retry when a part fail (?).
+    // Default: 5 MB
+    //   TransferManagerConfiguration.DEFAULT_MINIMUM_UPLOAD_PART_SIZE = 5 * MB;
+    private static final long S3_MULTIPART_UPLOAD_PART_SIZE = 100L * Constants.MB;
 
-	public static S3List upload(S3Client client, File sourceFile, AmazonS3URI destinationUri) throws IOException, InterruptedException {
-		S3List s3List;
+    public static S3List upload(S3Client client, File sourceFile, AmazonS3URI destinationUri) throws IOException, InterruptedException {
+        S3List s3List;
 
-		TransferManager transferManager = null;
-		try {
-			if (!client.getS3().doesBucketExistV2(destinationUri.getBucket())) {
-				throw new IOException(String.format("Bucket %s doesn't exist.", destinationUri.getBucket()));
-			}
+        TransferManager transferManager = null;
+        try {
+            if (!client.getS3().doesBucketExistV2(destinationUri.getBucket())) {
+                throw new IOException(String.format("Bucket %s doesn't exist.", destinationUri.getBucket()));
+            }
 
-			// Code sample:
-			// https://docs.aws.amazon.com/AmazonS3/latest/dev/HLuploadFileJava.html
-			transferManager = TransferManagerBuilder.standard()
-				.withS3Client(client.getS3())
-				.withMinimumUploadPartSize(UploadManager.S3_MULTIPART_UPLOAD_PART_SIZE)
-				.withMultipartUploadThreshold(UploadManager.S3_MULTIPART_UPLOAD_FILESIZE_THRESHOLD)
-				.build();
+            // Code sample:
+            // https://docs.aws.amazon.com/AmazonS3/latest/dev/HLuploadFileJava.html
+            transferManager = TransferManagerBuilder.standard()
+                .withS3Client(client.getS3())
+                .withMinimumUploadPartSize(UploadManager.S3_MULTIPART_UPLOAD_PART_SIZE)
+                .withMultipartUploadThreshold(UploadManager.S3_MULTIPART_UPLOAD_FILESIZE_THRESHOLD)
+                .build();
 
-			S3Bucket bucket = new S3Bucket(destinationUri.getBucket());
-			boolean bucketIsPublic = bucket.isPublic(client);
-
-
-			long startTime = System.currentTimeMillis();
-
-			s3List = UploadManager.upload(transferManager, sourceFile, destinationUri, bucketIsPublic);
-
-			long endTime = System.currentTimeMillis();
+            S3Bucket bucket = new S3Bucket(destinationUri.getBucket());
+            boolean bucketIsPublic = bucket.isPublic(client);
 
 
-			s3List.setExecutionTime(endTime - startTime);
-		} finally {
-			if (transferManager != null) {
-				try {
-					transferManager.shutdownNow(false);
-				} catch(Exception ex) {
-					LOGGER.error("Could not shutdown the transfer manager.", ex);
-				}
-			}
-		}
+            long startTime = System.currentTimeMillis();
 
-		return s3List;
-	}
+            s3List = UploadManager.upload(transferManager, sourceFile, destinationUri, bucketIsPublic);
+
+            long endTime = System.currentTimeMillis();
 
 
-	// Internal upload (recursive)
-	private static S3List upload(TransferManager transferManager, File sourceFile, AmazonS3URI destinationUri, boolean bucketIsPublic) throws IOException, InterruptedException {
-		S3List s3List = new S3List();
+            s3List.setExecutionTime(endTime - startTime);
+        } finally {
+            if (transferManager != null) {
+                try {
+                    transferManager.shutdownNow(false);
+                } catch(Exception ex) {
+                    LOGGER.error("Could not shutdown the transfer manager.", ex);
+                }
+            }
+        }
 
-		if (sourceFile.isDirectory()) {
-			// Upload a directory (recursive)
-
-			// Can't use "TransferManager.uploadDirectory", each file needs custom metadata.
-			// MultipleFileUpload multipleFileUpload = transferManager.uploadDirectory(
-			//   destinationUri.getBucketId(),
-			//   destinationUri.getAbsolutePath(),
-			//   sourceFile,
-			//   true);
-
-			File[] childFiles = sourceFile.listFiles();
-
-			if (childFiles != null && childFiles.length > 0) {
-				AmazonS3URI childDestinationUri =
-					S3Utils.getS3URI(destinationUri.getBucket(), destinationUri.getKey(), sourceFile.getName() + "/");
-
-				for (File childFile : childFiles) {
-					s3List.putAll(
-						UploadManager.upload(transferManager, childFile, childDestinationUri, bucketIsPublic));
-				}
-			}
-
-		} else if (sourceFile.isFile()) {
-			// Upload a single file
-
-			if (sourceFile.length() <= 0) {
-				throw new IOException(String.format("The source file '%s' is empty.", sourceFile.getAbsolutePath()));
-			}
-
-			if (S3Utils.getFilename(destinationUri) == null) {
-				destinationUri = S3Utils.getS3URI(destinationUri.getBucket(), destinationUri.getKey(), sourceFile.getName());
-			}
+        return s3List;
+    }
 
 
-			// File too big, uploading it in chunks
-			// http://docs.aws.amazon.com/AmazonS3/latest/dev/UploadingObjects.html
-			LOGGER.debug(String.format("Uploading file '%s' %d MB to '%s'",
-				sourceFile.getAbsolutePath(),
-				sourceFile.length() / Constants.MB,
-				destinationUri.toString()));
+    // Internal upload (recursive)
+    private static S3List upload(TransferManager transferManager, File sourceFile, AmazonS3URI destinationUri, boolean bucketIsPublic) throws IOException, InterruptedException {
+        S3List s3List = new S3List();
 
-			Map<String, String> customMetadata = new HashMap<String, String>();
-			customMetadata.put(S3File.USER_METADATA_LAST_MODIFIED_KEY, ""+sourceFile.lastModified());
+        if (sourceFile.isDirectory()) {
+            // Upload a directory (recursive)
 
-			ObjectMetadata fileMetadata = new ObjectMetadata();
-			// NOTE: ObjectMetadata.setLastModified is for "internal use only".
-			//   It can NOT be used to set the file lastModified date.
-			//   fileMetadata.setLastModified(new Date(sourceFile.lastModified()));
-			fileMetadata.setUserMetadata(customMetadata);
+            // Can't use "TransferManager.uploadDirectory", each file needs custom metadata.
+            // MultipleFileUpload multipleFileUpload = transferManager.uploadDirectory(
+            //   destinationUri.getBucketId(),
+            //   destinationUri.getAbsolutePath(),
+            //   sourceFile,
+            //   true);
 
-			PutObjectRequest putRequest = new PutObjectRequest(
-				destinationUri.getBucket(),
-				destinationUri.getKey(),
-				sourceFile).withMetadata(fileMetadata);
+            File[] childFiles = sourceFile.listFiles();
 
-			// Make the file public if it's saved in a public bucket
-			if (bucketIsPublic) {
-				putRequest = putRequest.withCannedAcl(CannedAccessControlList.PublicRead);
-			}
+            if (childFiles != null && childFiles.length > 0) {
+                AmazonS3URI childDestinationUri =
+                    S3Utils.getS3URI(destinationUri.getBucket(), destinationUri.getKey(), sourceFile.getName() + "/");
 
-			// TransferManager processes all transfers asynchronously,
-			// so this call returns immediately.
-			LOGGER.debug(String.format("Uploading %s to %s", sourceFile, destinationUri));
-			Upload upload = transferManager.upload(putRequest);
+                for (File childFile : childFiles) {
+                    s3List.putAll(
+                        UploadManager.upload(transferManager, childFile, childDestinationUri, bucketIsPublic));
+                }
+            }
 
-			LOGGER.debug("Upload started...");
+        } else if (sourceFile.isFile()) {
+            // Upload a single file
 
-			// We can show progress... upload.getProgress();
+            if (sourceFile.length() <= 0) {
+                throw new IOException(String.format("The source file '%s' is empty.", sourceFile.getAbsolutePath()));
+            }
 
-			// Optionally, wait for the upload to finish before continuing.
-			upload.waitForCompletion();
-
-			LOGGER.debug("Upload completed.");
+            if (S3Utils.getFilename(destinationUri) == null) {
+                destinationUri = S3Utils.getS3URI(destinationUri.getBucket(), destinationUri.getKey(), sourceFile.getName());
+            }
 
 
-			S3File s3File = new S3File(destinationUri);
-			s3File.setLocalFile(sourceFile);
+            // File too big, uploading it in chunks
+            // http://docs.aws.amazon.com/AmazonS3/latest/dev/UploadingObjects.html
 
-			s3List.putFile(s3File);
+            Map<String, String> customMetadata = new HashMap<String, String>();
+            customMetadata.put(S3File.USER_METADATA_LAST_MODIFIED_KEY, ""+sourceFile.lastModified());
 
-		} else {
-			throw new IOException(String.format("Can not upload the file '%s', it's not a normal file.", sourceFile.getAbsolutePath()));
-		}
+            ObjectMetadata fileMetadata = new ObjectMetadata();
+            // NOTE: ObjectMetadata.setLastModified is for "internal use only".
+            //   It can NOT be used to set the file lastModified date.
+            //   fileMetadata.setLastModified(new Date(sourceFile.lastModified()));
+            fileMetadata.setUserMetadata(customMetadata);
 
-		return s3List;
-	}
+            PutObjectRequest putRequest = new PutObjectRequest(
+                destinationUri.getBucket(),
+                destinationUri.getKey(),
+                sourceFile).withMetadata(fileMetadata);
+
+            // Make the file public if it's saved in a public bucket
+            if (bucketIsPublic) {
+                putRequest = putRequest.withCannedAcl(CannedAccessControlList.PublicRead);
+            }
+
+            // TransferManager processes all transfers asynchronously,
+            // so this call returns immediately.
+            LOGGER.debug(String.format("Uploading file %s (%d MB) to %s",
+                sourceFile,
+                sourceFile.length() / Constants.MB,
+                destinationUri));
+
+            Upload upload = transferManager.upload(putRequest);
+
+            LOGGER.debug("Upload started...");
+
+            // We can show progress... upload.getProgress();
+
+            // Optionally, wait for the upload to finish before continuing.
+            upload.waitForCompletion();
+
+            LOGGER.debug("Upload completed.");
+
+
+            S3File s3File = new S3File(destinationUri);
+            s3File.setLocalFile(sourceFile);
+
+            s3List.putFile(s3File);
+
+        } else {
+            throw new IOException(String.format("Can not upload the file %s, it's not a normal file.", sourceFile.getAbsolutePath()));
+        }
+
+        return s3List;
+    }
 
 }
