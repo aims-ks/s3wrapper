@@ -36,133 +36,133 @@ import java.util.regex.Pattern;
 
 public class ListManager {
 
-	public static S3List ls(S3Client client, AmazonS3URI s3Uri) {
-		return ListManager.ls(client, s3Uri, null, null, false);
-	}
-	public static S3List ls(S3Client client, AmazonS3URI s3Uri, boolean recursive) {
-		return ListManager.ls(client, s3Uri, null, null, recursive);
-	}
+    public static S3List ls(S3Client client, AmazonS3URI s3Uri) {
+        return ListManager.ls(client, s3Uri, null, null, false);
+    }
+    public static S3List ls(S3Client client, AmazonS3URI s3Uri, boolean recursive) {
+        return ListManager.ls(client, s3Uri, null, null, recursive);
+    }
 
-	public static S3List ls(S3Client client, AmazonS3URI s3Uri, FilenameFilter filenameFilter) {
-		return ListManager.ls(client, s3Uri, filenameFilter, null, false);
-	}
-	public static S3List ls(S3Client client, AmazonS3URI s3Uri, FilenameFilter filenameFilter, boolean recursive) {
-		return ListManager.ls(client, s3Uri, filenameFilter, null, recursive);
-	}
+    public static S3List ls(S3Client client, AmazonS3URI s3Uri, FilenameFilter filenameFilter) {
+        return ListManager.ls(client, s3Uri, filenameFilter, null, false);
+    }
+    public static S3List ls(S3Client client, AmazonS3URI s3Uri, FilenameFilter filenameFilter, boolean recursive) {
+        return ListManager.ls(client, s3Uri, filenameFilter, null, recursive);
+    }
 
-	public static S3List ls(S3Client client, AmazonS3URI s3Uri, FileFilter fileFilter) {
-		return ListManager.ls(client, s3Uri, null, fileFilter, false);
-	}
-	public static S3List ls(S3Client client, AmazonS3URI s3Uri, FileFilter fileFilter, boolean recursive) {
-		return ListManager.ls(client, s3Uri, null, fileFilter, recursive);
-	}
+    public static S3List ls(S3Client client, AmazonS3URI s3Uri, FileFilter fileFilter) {
+        return ListManager.ls(client, s3Uri, null, fileFilter, false);
+    }
+    public static S3List ls(S3Client client, AmazonS3URI s3Uri, FileFilter fileFilter, boolean recursive) {
+        return ListManager.ls(client, s3Uri, null, fileFilter, recursive);
+    }
 
-	private static S3List ls(S3Client client, AmazonS3URI s3Uri, FilenameFilter filenameFilter, FileFilter fileFilter, boolean recursive) {
-		S3List s3List = new S3List();
+    private static S3List ls(S3Client client, AmazonS3URI s3Uri, FilenameFilter filenameFilter, FileFilter fileFilter, boolean recursive) {
+        S3List s3List = new S3List();
 
-		long startTime = System.currentTimeMillis();
+        long startTime = System.currentTimeMillis();
 
-		String filename = S3Utils.getFilename(s3Uri);
-		Pattern filter = null;
-		if (S3Utils.isPattern(filename)) {
-			filter = S3Utils.toPattern(filename);
-			// Remove the "pattern" filename from the S3URI.
-			// This will list all file in the parent directory.
-			// Those will be filtered using the "filter"
-			s3Uri = S3Utils.getParentUri(s3Uri);
-		}
+        String filename = S3Utils.getFilename(s3Uri);
+        Pattern filter = null;
+        if (S3Utils.isPattern(filename)) {
+            filter = S3Utils.toPattern(filename);
+            // Remove the "pattern" filename from the S3URI.
+            // This will list all file in the parent directory.
+            // Those will be filtered using the "filter"
+            s3Uri = S3Utils.getParentUri(s3Uri);
+        }
 
-		// See: https://www.programcreek.com/java-api-examples/?api=com.amazonaws.services.s3.model.ListObjectsRequest
-		ListObjectsRequest listObjectsRequest = new ListObjectsRequest()
-			.withBucketName(s3Uri.getBucket())
-			.withPrefix(s3Uri.getKey());
+        // See: https://www.programcreek.com/java-api-examples/?api=com.amazonaws.services.s3.model.ListObjectsRequest
+        ListObjectsRequest listObjectsRequest = new ListObjectsRequest()
+                .withBucketName(s3Uri.getBucket())
+                .withPrefix(s3Uri.getKey());
 
-		if (!recursive) {
-			listObjectsRequest = listObjectsRequest.withDelimiter("/");
-		}
+        if (!recursive) {
+            listObjectsRequest = listObjectsRequest.withDelimiter("/");
+        }
 
-		ObjectListing objectListing = client.getS3().listObjects(listObjectsRequest);
+        ObjectListing objectListing = client.getS3().listObjects(listObjectsRequest);
 
-		// See: https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/examples-s3-buckets.html
-		boolean listIsTruncated = true;
-		while (listIsTruncated) {
-			for (S3ObjectSummary objectSummary : objectListing.getObjectSummaries()) {
-				AmazonS3URI fileS3Uri = S3Utils.getS3URI(s3Uri.getBucket(), objectSummary.getKey());
+        // See: https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/examples-s3-buckets.html
+        boolean listIsTruncated = true;
+        while (listIsTruncated) {
+            for (S3ObjectSummary objectSummary : objectListing.getObjectSummaries()) {
+                AmazonS3URI fileS3Uri = S3Utils.getS3URI(s3Uri.getBucket(), objectSummary.getKey());
 
-				boolean selected = false;
-				if (filenameFilter != null) {
-					String parentKey = S3Utils.getParentUri(fileS3Uri).getKey();
-					if (parentKey == null) {
-						parentKey = "";
-					}
-					selected = filenameFilter.accept(new File(parentKey), S3Utils.getFilename(fileS3Uri));
-				} else if (fileFilter != null) {
-					String fileKey = fileS3Uri.getKey();
-					if (fileKey == null) {
-						fileKey = "";
-					}
-					selected = fileFilter.accept(new File(fileKey));
-				} else if (filter != null) {
-					String s3Filename = S3Utils.getFilename(fileS3Uri);
-					if (s3Filename != null) {
-						selected = filter.matcher(s3Filename).matches();
-					}
-				} else {
-					selected = true;
-				}
+                boolean selected = false;
+                if (filenameFilter != null) {
+                    String parentKey = S3Utils.getParentUri(fileS3Uri).getKey();
+                    if (parentKey == null) {
+                        parentKey = "";
+                    }
+                    selected = filenameFilter.accept(new File(parentKey), S3Utils.getFilename(fileS3Uri));
+                } else if (fileFilter != null) {
+                    String fileKey = fileS3Uri.getKey();
+                    if (fileKey == null) {
+                        fileKey = "";
+                    }
+                    selected = fileFilter.accept(new File(fileKey));
+                } else if (filter != null) {
+                    String s3Filename = S3Utils.getFilename(fileS3Uri);
+                    if (s3Filename != null) {
+                        selected = filter.matcher(s3Filename).matches();
+                    }
+                } else {
+                    selected = true;
+                }
 
-				if (selected) {
-					S3Object fullObject = client.getS3().getObject(fileS3Uri.getBucket(), fileS3Uri.getKey());
-					s3List.putFile(new S3File(fileS3Uri, fullObject.getObjectMetadata()));
-				}
-			}
+                if (selected) {
+                    S3Object fullObject = client.getS3().getObject(fileS3Uri.getBucket(), fileS3Uri.getKey());
+                    s3List.putFile(new S3File(fileS3Uri, fullObject.getObjectMetadata()));
+                }
+            }
 
-			// See: https://stackoverflow.com/questions/14653694/listing-just-the-sub-folders-in-an-s3-bucket#answer-14653973
-			//   https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/services/s3/model/ObjectListing.html#getCommonPrefixes--
-			List<String> directories = objectListing.getCommonPrefixes();
-			for (String directory : directories) {
-				if (!directory.endsWith("/")) {
-					directory += "/";
-				}
-				AmazonS3URI fileS3Uri = S3Utils.getS3URI(s3Uri.getBucket(), directory);
+            // See: https://stackoverflow.com/questions/14653694/listing-just-the-sub-folders-in-an-s3-bucket#answer-14653973
+            //   https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/services/s3/model/ObjectListing.html#getCommonPrefixes--
+            List<String> directories = objectListing.getCommonPrefixes();
+            for (String directory : directories) {
+                if (!directory.endsWith("/")) {
+                    directory += "/";
+                }
+                AmazonS3URI fileS3Uri = S3Utils.getS3URI(s3Uri.getBucket(), directory);
 
-				boolean selected = false;
-				if (filenameFilter != null) {
-					String parentKey = S3Utils.getParentUri(fileS3Uri).getKey();
-					if (parentKey == null) {
-						parentKey = "";
-					}
-					selected = filenameFilter.accept(new File(parentKey), S3Utils.getDirectoryName(fileS3Uri));
-				} else if (fileFilter != null) {
-					String fileKey = fileS3Uri.getKey();
-					if (fileKey == null) {
-						fileKey = "";
-					}
-					selected = fileFilter.accept(new File(fileKey));
-				} else if (filter != null) {
-					String dirName = S3Utils.getDirectoryName(fileS3Uri);
-					if (dirName != null) {
-						selected = filter.matcher(dirName).matches();
-					}
-				} else {
-					selected = true;
-				}
+                boolean selected = false;
+                if (filenameFilter != null) {
+                    String parentKey = S3Utils.getParentUri(fileS3Uri).getKey();
+                    if (parentKey == null) {
+                        parentKey = "";
+                    }
+                    selected = filenameFilter.accept(new File(parentKey), S3Utils.getDirectoryName(fileS3Uri));
+                } else if (fileFilter != null) {
+                    String fileKey = fileS3Uri.getKey();
+                    if (fileKey == null) {
+                        fileKey = "";
+                    }
+                    selected = fileFilter.accept(new File(fileKey));
+                } else if (filter != null) {
+                    String dirName = S3Utils.getDirectoryName(fileS3Uri);
+                    if (dirName != null) {
+                        selected = filter.matcher(dirName).matches();
+                    }
+                } else {
+                    selected = true;
+                }
 
-				if (selected) {
-					s3List.putDir(new S3File(fileS3Uri));
-				}
-			}
+                if (selected) {
+                    s3List.putDir(new S3File(fileS3Uri));
+                }
+            }
 
-			listIsTruncated = objectListing.isTruncated();
-			if (listIsTruncated) {
-				objectListing = client.getS3().listNextBatchOfObjects(objectListing);
-			}
-		}
+            listIsTruncated = objectListing.isTruncated();
+            if (listIsTruncated) {
+                objectListing = client.getS3().listNextBatchOfObjects(objectListing);
+            }
+        }
 
-		long endTime = System.currentTimeMillis();
+        long endTime = System.currentTimeMillis();
 
-		s3List.setExecutionTime(endTime - startTime);
+        s3List.setExecutionTime(endTime - startTime);
 
-		return s3List;
-	}
+        return s3List;
+    }
 }

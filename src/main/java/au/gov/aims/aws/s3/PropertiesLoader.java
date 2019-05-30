@@ -26,43 +26,43 @@ import java.util.Properties;
 
 public class PropertiesLoader {
 
-	public static Properties load(File file) throws IOException {
-		Properties properties = null;
-		InputStream input = null;
+    public static Properties load(File file) throws IOException {
+        Properties properties = null;
+        InputStream input = null;
 
-		try {
-			input = new FileInputStream(file);
-			properties = PropertiesLoader.load(input);
-		} finally {
-			if (input != null) {
-				input.close();
-			}
-		}
+        try {
+            input = new FileInputStream(file);
+            properties = PropertiesLoader.load(input);
+        } finally {
+            if (input != null) {
+                input.close();
+            }
+        }
 
-		return properties;
-	}
+        return properties;
+    }
 
-	public static Properties load(String classpath) throws IOException {
-		Properties properties = null;
-		InputStream input = null;
+    public static Properties load(String classpath) throws IOException {
+        Properties properties = null;
+        InputStream input = null;
 
-		try {
-			input = PropertiesLoader.class.getClassLoader().getResourceAsStream(classpath);
-			properties = PropertiesLoader.load(input);
-		} finally {
-			if (input != null) {
-				input.close();
-			}
-		}
+        try {
+            input = PropertiesLoader.class.getClassLoader().getResourceAsStream(classpath);
+            properties = PropertiesLoader.load(input);
+        } finally {
+            if (input != null) {
+                input.close();
+            }
+        }
 
-		return properties;
-	}
+        return properties;
+    }
 
-	public static Properties load(InputStream inputStream) throws IOException {
-		Properties properties = new Properties();
+    public static Properties load(InputStream inputStream) throws IOException {
+        Properties properties = new Properties();
 
-		properties.load(inputStream);
+        properties.load(inputStream);
 
-		return properties;
-	}
+        return properties;
+    }
 }

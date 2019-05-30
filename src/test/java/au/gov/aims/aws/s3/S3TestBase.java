@@ -29,35 +29,35 @@ import java.io.File;
 import java.net.URL;
 
 public class S3TestBase {
-	private static final Logger LOGGER = Logger.getLogger(S3TestBase.class);
-	protected static final String S3_BUCKET_ID = "aims-s3wrapper-junit-test";
+    private static final Logger LOGGER = Logger.getLogger(S3TestBase.class);
+    protected static final String S3_BUCKET_ID = "aims-s3wrapper-junit-test";
 
-	protected S3Client openS3Client() throws Exception {
-		return S3Client.parse(PropertiesLoader.load("aws-credentials.properties"));
-	}
+    protected S3Client openS3Client() throws Exception {
+        return S3Client.parse(PropertiesLoader.load("aws-credentials.properties"));
+    }
 
-	protected void setupBucket(S3Client client) throws Exception {
-		// Create the S3 JUnit test bucket, if it doesn't already exist
-		try {
-			BucketManager.create(client, S3TestBase.S3_BUCKET_ID);
+    protected void setupBucket(S3Client client) throws Exception {
+        // Create the S3 JUnit test bucket, if it doesn't already exist
+        try {
+            BucketManager.create(client, S3TestBase.S3_BUCKET_ID);
 
-			// Copy the content of the bucket_files resource folder into the S3 bucket
-			URL bucketFilesUrl = S3TestBase.class.getClassLoader().getResource("bucket_files/");
+            // Copy the content of the bucket_files resource folder into the S3 bucket
+            URL bucketFilesUrl = S3TestBase.class.getClassLoader().getResource("bucket_files/");
 
-			File bucketFilesFolder = new File(bucketFilesUrl.toURI());
-			S3List uploadedFiles = new S3List();
-			AmazonS3URI bucketURI = S3Utils.getS3URI(S3_BUCKET_ID);
-			for (File bucketFilesFile : bucketFilesFolder.listFiles()) {
-				uploadedFiles.putAll(UploadManager.upload(client, bucketFilesFile, bucketURI));
-			}
-			LOGGER.info(String.format("%n" +
-				"############# TEST BUCKET CREATED #############%n" +
-				"Bucket ID: %s%n" +
-				"Files: %s%n" +
-				"###############################################", S3TestBase.S3_BUCKET_ID, uploadedFiles.toString()));
+            File bucketFilesFolder = new File(bucketFilesUrl.toURI());
+            S3List uploadedFiles = new S3List();
+            AmazonS3URI bucketURI = S3Utils.getS3URI(S3_BUCKET_ID);
+            for (File bucketFilesFile : bucketFilesFolder.listFiles()) {
+                uploadedFiles.putAll(UploadManager.upload(client, bucketFilesFile, bucketURI));
+            }
+            LOGGER.info(String.format("%n" +
+                    "############# TEST BUCKET CREATED #############%n" +
+                    "Bucket ID: %s%n" +
+                    "Files: %s%n" +
+                    "###############################################", S3TestBase.S3_BUCKET_ID, uploadedFiles.toString()));
 
-		} catch(BucketManager.BucketAlreadyExistsException ex) {
-			LOGGER.debug(String.format("The bucket %s already exists.", S3TestBase.S3_BUCKET_ID), ex);
-		}
-	}
+        } catch(BucketManager.BucketAlreadyExistsException ex) {
+            LOGGER.debug(String.format("The bucket %s already exists.", S3TestBase.S3_BUCKET_ID), ex);
+        }
+    }
 }

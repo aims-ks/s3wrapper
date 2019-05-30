@@ -25,41 +25,41 @@ import com.amazonaws.services.s3.model.Bucket;
 
 public class BucketManager {
 
-	public static S3Bucket create(S3Client client, AmazonS3URI s3Uri) throws Exception {
-		return BucketManager.create(client, s3Uri.getBucket());
-	}
+    public static S3Bucket create(S3Client client, AmazonS3URI s3Uri) throws Exception {
+        return BucketManager.create(client, s3Uri.getBucket());
+    }
 
-	public static S3Bucket create(S3Client client, String bucketId) throws Exception {
-		// Remove trailing white spaces
-		bucketId = bucketId == null ? null : bucketId.trim();
+    public static S3Bucket create(S3Client client, String bucketId) throws Exception {
+        // Remove trailing white spaces
+        bucketId = bucketId == null ? null : bucketId.trim();
 
-		if (bucketId == null || bucketId.isEmpty()) {
-			throw new IllegalArgumentException("Can not create bucket: Bucket ID is null or empty");
-		}
+        if (bucketId == null || bucketId.isEmpty()) {
+            throw new IllegalArgumentException("Can not create bucket: Bucket ID is null or empty");
+        }
 
-		if (client.getS3().doesBucketExistV2(bucketId)) {
-			throw new BucketAlreadyExistsException(String.format("Bucket %s already exists.", bucketId));
-		}
-
-
-		long startTime = System.currentTimeMillis();
-
-		Bucket bucket = client.getS3().createBucket(bucketId);
-
-		long endTime = System.currentTimeMillis();
+        if (client.getS3().doesBucketExistV2(bucketId)) {
+            throw new BucketAlreadyExistsException(String.format("Bucket %s already exists.", bucketId));
+        }
 
 
-		S3Bucket s3Bucket = new S3Bucket(bucketId);
-		s3Bucket.setExecutionTime(endTime - startTime);
-		s3Bucket.setCreationTime(bucket.getCreationDate());
+        long startTime = System.currentTimeMillis();
 
-		return s3Bucket;
-	}
+        Bucket bucket = client.getS3().createBucket(bucketId);
 
-	public static class BucketAlreadyExistsException extends Exception {
-		public BucketAlreadyExistsException(String message) {
-			super(message);
-		}
-	}
+        long endTime = System.currentTimeMillis();
+
+
+        S3Bucket s3Bucket = new S3Bucket(bucketId);
+        s3Bucket.setExecutionTime(endTime - startTime);
+        s3Bucket.setCreationTime(bucket.getCreationDate());
+
+        return s3Bucket;
+    }
+
+    public static class BucketAlreadyExistsException extends Exception {
+        public BucketAlreadyExistsException(String message) {
+            super(message);
+        }
+    }
 }
 

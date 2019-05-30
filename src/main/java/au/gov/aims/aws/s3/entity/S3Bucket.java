@@ -24,47 +24,47 @@ import com.amazonaws.services.s3.AmazonS3URI;
 import java.util.Date;
 
 public class S3Bucket {
-	private final AmazonS3URI s3Uri;
+    private final AmazonS3URI s3Uri;
 
-	private Long executionTime = null;
-	private Long creationTime = null;
+    private Long executionTime = null;
+    private Long creationTime = null;
 
-	public S3Bucket(String bucketId) {
-		this.s3Uri = S3Utils.getS3URI(bucketId);
-	}
+    public S3Bucket(String bucketId) {
+        this.s3Uri = S3Utils.getS3URI(bucketId);
+    }
 
-	public String getBucketId() {
-		return this.s3Uri.getBucket();
-	}
+    public String getBucketId() {
+        return this.s3Uri.getBucket();
+    }
 
-	public void setExecutionTime(Long executionTime) {
-		this.executionTime = executionTime;
-	}
-	public Long getExecutionTime() {
-		return this.executionTime;
-	}
+    public void setExecutionTime(Long executionTime) {
+        this.executionTime = executionTime;
+    }
+    public Long getExecutionTime() {
+        return this.executionTime;
+    }
 
-	public void setCreationTime(Long creationTime) {
-		this.creationTime = creationTime;
-	}
-	public Long getCreationTime() {
-		return this.creationTime;
-	}
-	public void setCreationTime(Date creationDate) {
-		if (creationDate == null) {
-			this.creationTime = null;
-		} else {
-			this.setCreationTime(creationDate.getTime());
-		}
-	}
+    public void setCreationTime(Long creationTime) {
+        this.creationTime = creationTime;
+    }
+    public Long getCreationTime() {
+        return this.creationTime;
+    }
+    public void setCreationTime(Date creationDate) {
+        if (creationDate == null) {
+            this.creationTime = null;
+        } else {
+            this.setCreationTime(creationDate.getTime());
+        }
+    }
 
-	public boolean isPublic(S3Client client) {
-		String bucketId = this.s3Uri.getBucket();
+    public boolean isPublic(S3Client client) {
+        String bucketId = this.s3Uri.getBucket();
 
-		if (bucketId == null || !client.getS3().doesBucketExistV2(bucketId)) {
-			return false;
-		}
+        if (bucketId == null || !client.getS3().doesBucketExistV2(bucketId)) {
+            return false;
+        }
 
-		return S3Utils.isPublic(client.getS3().getBucketAcl(bucketId));
-	}
+        return S3Utils.isPublic(client.getS3().getBucketAcl(bucketId));
+    }
 }

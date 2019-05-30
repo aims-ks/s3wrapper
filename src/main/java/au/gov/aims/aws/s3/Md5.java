@@ -26,42 +26,42 @@ import java.security.MessageDigest;
 
 public class Md5 {
 
-	// Inspired from:
-	//   http://www.rgagnon.com/javadetails/java-0416.html
-	public static String md5sum(File file) throws Exception {
-		MessageDigest md5 = MessageDigest.getInstance("MD5");
+    // Inspired from:
+    //   http://www.rgagnon.com/javadetails/java-0416.html
+    public static String md5sum(File file) throws Exception {
+        MessageDigest md5 = MessageDigest.getInstance("MD5");
 
-		InputStream inputStream = null;
-		DigestInputStream digestStream = null;
-		try {
-			inputStream = new FileInputStream(file);
-			digestStream = new DigestInputStream(inputStream, md5);
+        InputStream inputStream = null;
+        DigestInputStream digestStream = null;
+        try {
+            inputStream = new FileInputStream(file);
+            digestStream = new DigestInputStream(inputStream, md5);
 
-			byte[] buffer = new byte[1024];
-			int numRead;
-			do {
-				numRead = inputStream.read(buffer);
-				if (numRead > 0) {
-					md5.update(buffer, 0, numRead);
-				}
-			} while (numRead > 0);
-		} finally {
-			if (digestStream != null) {
-				digestStream.close();
-			}
-			if (inputStream != null) {
-				inputStream.close();
-			}
-		}
+            byte[] buffer = new byte[1024];
+            int numRead;
+            do {
+                numRead = inputStream.read(buffer);
+                if (numRead > 0) {
+                    md5.update(buffer, 0, numRead);
+                }
+            } while (numRead > 0);
+        } finally {
+            if (digestStream != null) {
+                digestStream.close();
+            }
+            if (inputStream != null) {
+                inputStream.close();
+            }
+        }
 
-		byte[] bytes = md5.digest();
+        byte[] bytes = md5.digest();
 
-		// Create a HEX string from the bytes array
-		StringBuilder md5sum = new StringBuilder();
-		for (byte aByte : bytes) {
-			md5sum.append(Integer.toString( ( aByte & 0xff ) + 0x100, 16).substring( 1 ));
-		}
+        // Create a HEX string from the bytes array
+        StringBuilder md5sum = new StringBuilder();
+        for (byte aByte : bytes) {
+            md5sum.append(Integer.toString( ( aByte & 0xff ) + 0x100, 16).substring( 1 ));
+        }
 
-		return md5sum.toString();
-	}
+        return md5sum.toString();
+    }
 }

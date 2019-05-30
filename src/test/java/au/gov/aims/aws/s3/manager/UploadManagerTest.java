@@ -33,58 +33,58 @@ import java.io.File;
 import java.net.URL;
 
 public class UploadManagerTest extends S3TestBase {
-	private static final Logger LOGGER = Logger.getLogger(UploadManagerTest.class);
+    private static final Logger LOGGER = Logger.getLogger(UploadManagerTest.class);
 
-	/**
-	 * Upload a file to S3, then download it to see if it has changed.
-	 * NOTE: The resource file "aws-credentials.properties" must be set before running this test.
-	 * @throws Exception If something goes wrong...
-	 */
-	@Test
-	public void testUploadDownloadFile() throws Exception {
-		URL origFileUrl = UploadManagerTest.class.getClassLoader().getResource("bucket_files/bin/random_1024.bin");
-		File origFile = new File(origFileUrl.toURI());
-		File tempFile = File. createTempFile("s3mockup_", "_random_1024.bin");
-		AmazonS3URI destinationUri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "/bin/random_1024.bin");
+    /**
+     * Upload a file to S3, then download it to see if it has changed.
+     * NOTE: The resource file "aws-credentials.properties" must be set before running this test.
+     * @throws Exception If something goes wrong...
+     */
+    @Test
+    public void testUploadDownloadFile() throws Exception {
+        URL origFileUrl = UploadManagerTest.class.getClassLoader().getResource("bucket_files/bin/random_1024.bin");
+        File origFile = new File(origFileUrl.toURI());
+        File tempFile = File. createTempFile("s3mockup_", "_random_1024.bin");
+        AmazonS3URI destinationUri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "/bin/random_1024.bin");
 
-		try (S3Client client = super.openS3Client()) {
-			super.setupBucket(client);
+        try (S3Client client = super.openS3Client()) {
+            super.setupBucket(client);
 
-			S3List uploadS3List = UploadManager.upload(client, origFile, destinationUri);
-			LOGGER.info(uploadS3List);
+            S3List uploadS3List = UploadManager.upload(client, origFile, destinationUri);
+            LOGGER.info(uploadS3List);
 
-			// Verify upload
-			Assert.assertNotNull("The upload response is null.", uploadS3List);
+            // Verify upload
+            Assert.assertNotNull("The upload response is null.", uploadS3List);
 
-			// Verify if the file is on S3
-			S3List checkS3List = ListManager.ls(client, destinationUri);
-			LOGGER.info(checkS3List);
+            // Verify if the file is on S3
+            S3List checkS3List = ListManager.ls(client, destinationUri);
+            LOGGER.info(checkS3List);
 
-			Assert.assertNotNull("The file info response is null.", checkS3List);
+            Assert.assertNotNull("The file info response is null.", checkS3List);
 
-			// Get the file from the map
-			S3File checkS3File = checkS3List.getFiles().get("bin/random_1024.bin");
-			Assert.assertNotNull("The uploaded file is null", checkS3File);
-			Assert.assertEquals("The uploaded file key is wrong", "bin/random_1024.bin", checkS3File.getS3Uri().getKey());
-			Assert.assertEquals("The uploaded file size do not match the original", origFile.length(), checkS3File.getFileSize().longValue());
+            // Get the file from the map
+            S3File checkS3File = checkS3List.getFiles().get("bin/random_1024.bin");
+            Assert.assertNotNull("The uploaded file is null", checkS3File);
+            Assert.assertEquals("The uploaded file key is wrong", "bin/random_1024.bin", checkS3File.getS3Uri().getKey());
+            Assert.assertEquals("The uploaded file size do not match the original", origFile.length(), checkS3File.getFileSize().longValue());
 
 
-			// Download the file
-			S3List downloadS3List = DownloadManager.download(client, destinationUri, tempFile);
-			LOGGER.info(downloadS3List);
+            // Download the file
+            S3List downloadS3List = DownloadManager.download(client, destinationUri, tempFile);
+            LOGGER.info(downloadS3List);
 
-			// Verify download
-			Assert.assertNotNull("The download response is null.", downloadS3List);
+            // Verify download
+            Assert.assertNotNull("The download response is null.", downloadS3List);
 
-			// Check file md5sum
-			String md5sumOrig = Md5.md5sum(origFile);
-			String md5sumDownloaded = Md5.md5sum(tempFile);
-			Assert.assertEquals("The file md5sum doesn't match.", md5sumOrig, md5sumDownloaded);
+            // Check file md5sum
+            String md5sumOrig = Md5.md5sum(origFile);
+            String md5sumDownloaded = Md5.md5sum(tempFile);
+            Assert.assertEquals("The file md5sum doesn't match.", md5sumOrig, md5sumDownloaded);
 
-			// Check last modified
-			long lastModifiedCheck = checkS3File.getLastModified();
-			long lastModifiedDownloaded = tempFile.lastModified();
-			Assert.assertEquals("The file last modified data doesn't match.", lastModifiedCheck, lastModifiedDownloaded);
-		}
-	}
+            // Check last modified
+            long lastModifiedCheck = checkS3File.getLastModified();
+            long lastModifiedDownloaded = tempFile.lastModified();
+            Assert.assertEquals("The file last modified data doesn't match.", lastModifiedCheck, lastModifiedDownloaded);
+        }
+    }
 }
