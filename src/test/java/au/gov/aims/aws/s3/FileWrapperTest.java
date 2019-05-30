@@ -27,6 +27,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.FilenameFilter;
+import java.net.URI;
 import java.net.URL;
 import java.util.List;
 
@@ -42,6 +43,7 @@ public class FileWrapperTest extends S3TestBase {
         Assert.assertNotNull("The file wrapper is null", fileWrapper);
 
         FileWrapper parentFileWrapper = fileWrapper.getParent();
+
         Assert.assertNotNull("The parent file wrapper is null", parentFileWrapper);
         Assert.assertEquals("The parent file is wrong", new File("/tmp/s3wrapper/FileWrapper"), parentFileWrapper.getFile());
         Assert.assertEquals("The parent S3URI is wrong", S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "s3wrapper/FileWrapper/"), parentFileWrapper.getS3URI());
@@ -74,7 +76,7 @@ public class FileWrapperTest extends S3TestBase {
     public void testListFilesWithoutS3() throws Exception {
         URL ioFileUrl = FileWrapperTest.class.getClassLoader().getResource("bucket_files");
         File ioFile = new File(ioFileUrl.toURI());
-        FileWrapper rootFileWrapper = new FileWrapper(null, ioFile);
+        FileWrapper rootFileWrapper = new FileWrapper((URI)null, ioFile);
 
         List<FileWrapper> fileWrapperList = rootFileWrapper.listFiles(null);
         Assert.assertNotNull("The file list is null", fileWrapperList);
@@ -134,7 +136,7 @@ public class FileWrapperTest extends S3TestBase {
     public void testListFilesRecursivelyWithoutS3() throws Exception {
         URL ioFileUrl = FileWrapperTest.class.getClassLoader().getResource("bucket_files");
         File ioFile = new File(ioFileUrl.toURI());
-        FileWrapper rootFileWrapper = new FileWrapper(null, ioFile);
+        FileWrapper rootFileWrapper = new FileWrapper((URI)null, ioFile);
 
         List<FileWrapper> fileWrapperList = rootFileWrapper.listFiles(null, true);
         Assert.assertNotNull("The file list is null", fileWrapperList);
@@ -192,7 +194,7 @@ public class FileWrapperTest extends S3TestBase {
     public void testListFilesFilterRecursivelyWithoutS3() throws Exception {
         URL ioFileUrl = FileWrapperTest.class.getClassLoader().getResource("bucket_files");
         File ioFile = new File(ioFileUrl.toURI());
-        FileWrapper rootFileWrapper = new FileWrapper(null, ioFile);
+        FileWrapper rootFileWrapper = new FileWrapper((URI)null, ioFile);
 
         List<FileWrapper> fileWrapperList = rootFileWrapper.listFiles(null, new FilenameFilter() {
             @Override
