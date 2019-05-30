@@ -31,33 +31,33 @@ import org.junit.Test;
 import java.util.Map;
 
 public class ListManagerTest extends S3TestBase {
-	private static final Logger LOGGER = Logger.getLogger(ListManagerTest.class);
+    private static final Logger LOGGER = Logger.getLogger(ListManagerTest.class);
 
-	/**
-	 * Upload a file to S3, then download it to see if it has changed.
-	 * NOTE: The resource file "aws-credentials.properties" must be set before running this test.
-	 * @throws Exception If something goes wrong...
-	 */
-	@Test
-	public void testLs() throws Exception {
-		try (S3Client client = super.openS3Client()) {
-			super.setupBucket(client);
+    /**
+     * Upload a file to S3, then download it to see if it has changed.
+     * NOTE: The resource file "aws-credentials.properties" must be set before running this test.
+     * @throws Exception If something goes wrong...
+     */
+    @Test
+    public void testLs() throws Exception {
+        try (S3Client client = super.openS3Client()) {
+            super.setupBucket(client);
 
-			AmazonS3URI s3Uri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "/bin/");
-			S3List s3List = ListManager.ls(client, s3Uri);
-			LOGGER.info(s3List);
+            AmazonS3URI s3Uri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "/bin/");
+            S3List s3List = ListManager.ls(client, s3Uri);
+            LOGGER.info(s3List);
 
-			Assert.assertNotNull("The file list is null", s3List);
+            Assert.assertNotNull("The file list is null", s3List);
 
-			Map<String, S3File> dirs = s3List.getDirs();
-			Assert.assertTrue("Found sub-directory in 'bin'.", dirs == null || dirs.isEmpty());
+            Map<String, S3File> dirs = s3List.getDirs();
+            Assert.assertTrue("Found sub-directory in 'bin'.", dirs == null || dirs.isEmpty());
 
-			Map<String, S3File> files = s3List.getFiles();
-			Assert.assertEquals("Wrong number of files in 'bin'.", 3, files.size());
+            Map<String, S3File> files = s3List.getFiles();
+            Assert.assertEquals("Wrong number of files in 'bin'.", 3, files.size());
 
-			Assert.assertTrue("Missing file 'bin/random_100.bin'.", files.containsKey("bin/random_100.bin"));
-			Assert.assertTrue("Missing file 'bin/random_1024.bin'.", files.containsKey("bin/random_1024.bin"));
-			Assert.assertTrue("Missing file 'bin/zero_100.bin'.", files.containsKey("bin/zero_100.bin"));
-		}
-	}
+            Assert.assertTrue("Missing file 'bin/random_100.bin'.", files.containsKey("bin/random_100.bin"));
+            Assert.assertTrue("Missing file 'bin/random_1024.bin'.", files.containsKey("bin/random_1024.bin"));
+            Assert.assertTrue("Missing file 'bin/zero_100.bin'.", files.containsKey("bin/zero_100.bin"));
+        }
+    }
 }
