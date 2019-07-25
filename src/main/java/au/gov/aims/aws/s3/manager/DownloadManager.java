@@ -31,6 +31,7 @@ import org.apache.log4j.Logger;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Map;
 
@@ -92,6 +93,10 @@ public class DownloadManager {
         return s3List;
     }
 
+    public static boolean fileExists(S3Client client, AmazonS3URI sourceUri) {
+        return client.getS3().doesObjectExist(sourceUri.getBucket(), sourceUri.getKey());
+    }
+
     private static S3File downloadFile(S3Client client, AmazonS3URI sourceUri, File destinationFile) throws IOException {
         // Download a single file
         if (destinationFile.exists()) {
@@ -112,31 +117,35 @@ public class DownloadManager {
         S3ObjectInputStream s3FileInputStream = null;
 
         try {
-            s3Object = client.getS3().getObject(sourceUri.getBucket(), sourceUri.getKey());
-            if (s3Object != null) {
-                ObjectMetadata metadata = s3Object.getObjectMetadata();
-                s3File = new S3File(sourceUri, metadata);
-                s3File.setLocalFile(destinationFile);
+            if (!DownloadManager.fileExists(client, sourceUri)) {
+                throw new FileNotFoundException(String.format("File not found: %s", sourceUri.toString()));
+            } else {
+                s3Object = client.getS3().getObject(sourceUri.getBucket(), sourceUri.getKey());
+                if (s3Object != null) {
+                    ObjectMetadata metadata = s3Object.getObjectMetadata();
+                    s3File = new S3File(sourceUri, metadata);
+                    s3File.setLocalFile(destinationFile);
 
-                LOGGER.debug(String.format("Downloading %s to %s", sourceUri, destinationFile));
-                s3FileInputStream = s3Object.getObjectContent();
-                if (s3FileInputStream != null) {
-                    FileUtils.copyToFile(s3FileInputStream, destinationFile);
+                    LOGGER.debug(String.format("Downloading %s to %s", sourceUri, destinationFile));
+                    s3FileInputStream = s3Object.getObjectContent();
+                    if (s3FileInputStream != null) {
+                        FileUtils.copyToFile(s3FileInputStream, destinationFile);
 
-                    //FileUtils.copyToFile(s3FileInputStream, destinationFile);
-                    Long lastModified = s3File.getLastModified();
-                    if (lastModified != null) {
-                        boolean lastModifiedSet = destinationFile.setLastModified(lastModified);
-                        if (!lastModifiedSet) {
-                            LOGGER.warn(String.format("Could not change the last modified date of file %s, last modified timestamp: %d.",
-                                    destinationFile.getAbsolutePath(), lastModified));
+                        //FileUtils.copyToFile(s3FileInputStream, destinationFile);
+                        Long lastModified = s3File.getLastModified();
+                        if (lastModified != null) {
+                            boolean lastModifiedSet = destinationFile.setLastModified(lastModified);
+                            if (!lastModifiedSet) {
+                                LOGGER.warn(String.format("Could not change the last modified date of file %s, last modified timestamp: %d.",
+                                        destinationFile.getAbsolutePath(), lastModified));
+                            }
                         }
+                    } else {
+                        LOGGER.error(String.format("Can not download the file %s, input stream is null.", sourceUri.toString()));
                     }
                 } else {
-                    LOGGER.error(String.format("Can download the file %s, input stream is null.", sourceUri.toString()));
+                    LOGGER.error(String.format("Can not download the file %s, file object is null.", sourceUri.toString()));
                 }
-            } else {
-                LOGGER.error(String.format("Can download the file %s, file object is null.", sourceUri.toString()));
             }
         } finally {
             if (s3FileInputStream != null) {

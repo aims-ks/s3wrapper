@@ -25,12 +25,12 @@ import au.gov.aims.aws.s3.entity.S3Client;
 import au.gov.aims.aws.s3.entity.S3File;
 import au.gov.aims.aws.s3.entity.S3List;
 import com.amazonaws.services.s3.AmazonS3URI;
-import com.amazonaws.services.s3.model.AmazonS3Exception;
 import org.apache.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
@@ -43,7 +43,7 @@ public class DownloadManagerTest extends S3TestBase {
      * NOTE: The resource file "aws-credentials.properties" must be set before running this test.
      * @throws Exception If something goes wrong...
      */
-    @Test(expected = AmazonS3Exception.class)
+    @Test(expected = FileNotFoundException.class)
     public void testDownloadFileNotFound() throws Exception {
         try (S3Client client = super.openS3Client()) {
             super.setupBucket(client);
@@ -51,7 +51,7 @@ public class DownloadManagerTest extends S3TestBase {
             AmazonS3URI s3Uri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "/none-existing-folder/nope/this-file-does-not-exists.png");
             DownloadManager.download(client, s3Uri, new File("/tmp/s3wrapper"));
 
-            Assert.fail("Downloading a non existing file must trigger an AmazonS3Exception.");
+            Assert.fail("Downloading a non existing file must trigger an FileNotFoundException.");
         }
     }
 
