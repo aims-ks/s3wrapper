@@ -23,12 +23,17 @@ import com.amazonaws.services.s3.model.AccessControlList;
 import com.amazonaws.services.s3.model.Grant;
 import com.amazonaws.services.s3.model.GroupGrantee;
 import com.amazonaws.services.s3.model.Permission;
+import org.apache.log4j.Logger;
 
+import java.net.URI;
+import java.net.URL;
 import java.util.List;
 import java.util.regex.Pattern;
 
 public class S3Utils {
-    private static final String S3_PROTOCOL = "s3://";
+    private static final Logger LOGGER = Logger.getLogger(S3Utils.class);
+    private static final String S3_SCHEME = "s3";
+    private static final String S3_PROTOCOL = S3_SCHEME + "://";
 
     public static boolean isS3URI(String uri) {
         if (uri == null) {
@@ -103,6 +108,34 @@ public class S3Utils {
         filePath = filePath.replaceAll("/{2,}", "/");
 
         return new AmazonS3URI(S3Utils.S3_PROTOCOL + bucketId + filePath);
+    }
+
+    /**
+     * Build a public URL from a S3 URI.
+     * See: https://docs.aws.amazon.com/fr_fr/AmazonS3/latest/dev/UsingBucket.html#access-bucket-intro
+     * @param fileUri
+     * @return
+     */
+    public static URL getPublicURL(URI fileUri) {
+        if (fileUri == null) {
+            return null;
+        }
+
+        if (S3Utils.S3_SCHEME.equals(fileUri.getScheme())) {
+            StringBuilder sb = new StringBuilder("https://")
+                .append(fileUri.getHost())
+                .append(".s3.amazonaws.com")
+                .append(fileUri.getPath());
+
+            try {
+                return new URL(sb.toString());
+            } catch(Exception ex) {
+                LOGGER.error(String.format("Could not create a public URL from S3 URI: %s", fileUri.toString()), ex);
+                return null;
+            }
+        }
+
+        return null;
     }
 
     public static String getFilename(AmazonS3URI s3Uri) {

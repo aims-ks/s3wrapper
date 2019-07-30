@@ -22,6 +22,9 @@ import com.amazonaws.services.s3.AmazonS3URI;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.net.URI;
+import java.net.URL;
+
 public class S3UtilsTest {
 
     @Test
@@ -63,6 +66,26 @@ public class S3UtilsTest {
         s3Uri = S3Utils.getS3URI("mybucket", "///folder//subfolder/////file");
         expectedS3Uri = S3Utils.getS3URI("mybucket", "folder/subfolder/file");
         Assert.assertEquals(expectedS3Uri, s3Uri);
+    }
+
+    @Test
+    public void testGetPublicURLWithS3Uri() throws Exception {
+        URI fileUri = new URI("s3://aims-ereefs-public-test/ncanimate/products/gbr4_v2_temp-wind-salt-current/gbr4_v2_temp-wind-salt-current_video_monthly_2011-04_torres-strait_-1.5.mp4");
+        URL expectedUrl = new URL("https://aims-ereefs-public-test.s3.amazonaws.com/ncanimate/products/gbr4_v2_temp-wind-salt-current/gbr4_v2_temp-wind-salt-current_video_monthly_2011-04_torres-strait_-1.5.mp4");
+
+        URL actualUrl = S3Utils.getPublicURL(fileUri);
+
+        Assert.assertEquals("S3Utils.getPublicURL returned wrong URL", expectedUrl, actualUrl);
+    }
+
+    @Test
+    public void testGetPublicURLWithFileUri() throws Exception {
+        URI fileUri = new URI("file://ncanimate/products/gbr4_v2_temp-wind-salt-current/gbr4_v2_temp-wind-salt-current_video_monthly_2011-04_torres-strait_-1.5.mp4");
+        URL expectedUrl = null;
+
+        URL actualUrl = S3Utils.getPublicURL(fileUri);
+
+        Assert.assertEquals("S3Utils.getPublicURL returned wrong URL", expectedUrl, actualUrl);
     }
 
     @Test
