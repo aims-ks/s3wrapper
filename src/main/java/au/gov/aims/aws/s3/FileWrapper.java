@@ -177,6 +177,27 @@ public class FileWrapper implements Comparable<FileWrapper> {
         return null;
     }
 
+    public Long getS3FileSize(S3Client client) {
+        if (this.uri != null) {
+            String scheme = this.uri.getScheme();
+            if ("s3".equals(scheme)) {
+                if (client != null) {
+                    S3File s3File = this.getS3File(client);
+                    if (s3File != null) {
+                        return s3File.getFileSize();
+                    }
+                }
+            } else if ("file".equals(scheme)) {
+                File localFile = new File(this.uri);
+                if (localFile.exists()) {
+                    return localFile.length();
+                }
+            }
+        }
+
+        return null;
+    }
+
     public Long getS3LastModified(S3Client client) {
         if (this.uri != null) {
             String scheme = this.uri.getScheme();
@@ -188,9 +209,9 @@ public class FileWrapper implements Comparable<FileWrapper> {
                     }
                 }
             } else if ("file".equals(scheme)) {
-                File s3File = new File(this.uri);
-                if (s3File.exists()) {
-                    return s3File.lastModified();
+                File localFile = new File(this.uri);
+                if (localFile.exists()) {
+                    return localFile.lastModified();
                 }
             }
         }
@@ -217,10 +238,28 @@ public class FileWrapper implements Comparable<FileWrapper> {
 
         Long s3LastModified = this.getS3LastModified(client);
         if (s3LastModified == null) {
-            return false;
+            // The file on S3 doesn't have a last modified date.
+            // Do not take chances, assume it's outdated.
+            return true;
         }
 
-        return this.ioFile.lastModified() < s3LastModified;
+        boolean outdated = this.ioFile.lastModified() < s3LastModified;
+        if (outdated) {
+            return true;
+        }
+
+        // Check if the file size match
+        Long s3FileSize = this.getS3FileSize(client);
+
+        if (s3FileSize == null) {
+            // Can't get the size of the file on S3.
+            // Do not take chances, assume it's outdated.
+            return true;
+        }
+
+        long downloadedFileSize = this.ioFile.length();
+
+        return s3FileSize != downloadedFileSize;
     }
 
     public File downloadFile(S3Client client) throws IOException {
