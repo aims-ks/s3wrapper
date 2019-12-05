@@ -568,4 +568,21 @@ public class FileWrapperTest extends S3TestBase {
             Assert.fail("The download should have failed. There is not enough space on disk.");
         }
     }
+
+    @Test
+    @Ignore
+    public void testFileAnomaly() throws Exception {
+        URI source = new URI("s3://aims-ereefs-public-test/ncanimate/products/products__ncanimate__ereefs__gbr4_bgc_924__chl-a-sum_din_tss_daily/products__ncanimate__ereefs__gbr4_bgc_924__chl-a-sum_din_tss_daily_video_yearly_2014_wet-tropics_-1.5.wmv");
+
+        File destinationDir = Files.createTempDirectory("s3wrapper_").toFile();
+        File destination = new File(destinationDir, "wet-tropics_-1.5.wmv");
+
+        try (S3Client s3Client = super.openS3Client()) {
+            FileWrapper fileWrapper = new FileWrapper(source, destination);
+
+            Long lastModified = fileWrapper.getLastModified(s3Client);
+
+            System.out.println("LAST MODIFIED: " + lastModified);
+        }
+    }
 }

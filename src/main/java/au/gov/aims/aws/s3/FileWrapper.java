@@ -169,6 +169,14 @@ public class FileWrapper implements Comparable<FileWrapper> {
                 if (client != null) {
                     AmazonS3URI s3URI =  new AmazonS3URI(this.uri);
                     S3List s3List = ListManager.ls(client, s3URI);
+for (int i=0; i<10 && !s3List.getFiles().containsKey(s3URI.getKey()); i++) {
+    LOGGER.warn(String.format("File %s NOT FOUND!!", s3URI));
+    try { Thread.sleep(1000); } catch(Exception ex) {}
+    s3List = ListManager.ls(client, s3URI);
+    if (s3List.getFiles().containsKey(s3URI.getKey())) {
+        LOGGER.warn(String.format("File %s MIRACULOUSLY FOUND AFTER %d ATTEMPTS!!", s3URI, i+2));
+    }
+}
                     return s3List.getFiles().get(s3URI.getKey());
                 }
             }
