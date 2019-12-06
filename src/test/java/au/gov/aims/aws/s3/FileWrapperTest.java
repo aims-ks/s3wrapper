@@ -569,10 +569,16 @@ public class FileWrapperTest extends S3TestBase {
         }
     }
 
+    /**
+     * This test can be used to verify how the system sees S3 files
+     * @throws Exception
+     */
     @Test
     @Ignore
-    public void testFileAnomaly() throws Exception {
-        URI source = new URI("s3://aims-ereefs-public-test/ncanimate/products/products__ncanimate__ereefs__gbr4_bgc_924__chl-a-sum_din_tss_daily/products__ncanimate__ereefs__gbr4_bgc_924__chl-a-sum_din_tss_daily_video_yearly_2014_wet-tropics_-1.5.wmv");
+    public void testS3File() throws Exception {
+//        URI source = new URI("s3://aims-ereefs-public-test/ncanimate/products/products__ncanimate__ereefs__gbr4_bgc_924__chl-a-sum_din_tss_daily/products__ncanimate__ereefs__gbr4_bgc_924__chl-a-sum_din_tss_daily_video_yearly_2014_wet-tropics_-1.5.wmv");
+//        URI source = new URI("s3://aims-ereefs-public-test/ncanimate/products/products__ncanimate__ereefs__gbr4_bgc_924__chl-a-sum_din_tss_daily/products__ncanimate__ereefs__gbr4_bgc_924__chl-a-sum_din_tss_daily_video_yearly_2014_brisbane_-1.5.mp4");
+        URI source = new URI("s3://aims-ereefs-public-test/ncanimate/products/products__ncanimate__ereefs__gbr4_bgc_924__chl-a-sum_din_tss_daily/products__ncanimate__ereefs__gbr4_bgc_924__chl-a-sum_din_tss_daily_video_yearly_2014_torres-strait_-1.5.wmv");
 
         File destinationDir = Files.createTempDirectory("s3wrapper_").toFile();
         File destination = new File(destinationDir, "wet-tropics_-1.5.wmv");
