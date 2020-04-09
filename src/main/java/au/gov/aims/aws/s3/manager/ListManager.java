@@ -101,7 +101,6 @@ public class ListManager {
 
         AmazonS3 s3 = client.getS3();
 
-        LOGGER.info(String.format("List S3 files from %s", s3Uri));
         ObjectListing objectListing = s3.listObjects(listObjectsRequest);
 
         // See: https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/examples-s3-buckets.html
