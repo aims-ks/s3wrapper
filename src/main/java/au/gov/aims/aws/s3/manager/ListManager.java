@@ -101,6 +101,7 @@ public class ListManager {
 
         AmazonS3 s3 = client.getS3();
 
+        LOGGER.info(String.format("List S3 files from %s", s3Uri));
         ObjectListing objectListing = s3.listObjects(listObjectsRequest);
 
         // See: https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/examples-s3-buckets.html
@@ -132,9 +133,21 @@ public class ListManager {
                 }
 
                 if (selected) {
-                    // Can't reconnect S3 client in a middle of a listing...
-                    S3Object fullObject = s3.getObject(fileS3Uri.getBucket(), fileS3Uri.getKey());
-                    s3List.putFile(new S3File(fileS3Uri, fullObject.getObjectMetadata()));
+                    S3Object fullObject = null;
+                    try {
+                        // Can't reconnect S3 client in a middle of a listing...
+                        fullObject = s3.getObject(fileS3Uri.getBucket(), fileS3Uri.getKey());
+                        s3List.putFile(new S3File(fileS3Uri, fullObject.getObjectMetadata()));
+                    } finally {
+                        try {
+                            if (fullObject != null) {
+                                fullObject.close();
+                            }
+                        } catch(Exception ex) {
+                            LOGGER.error(String.format("Error occurred while closing a S3 file object: %s",
+                                    fileS3Uri));
+                        }
+                    }
                 }
             }
 
