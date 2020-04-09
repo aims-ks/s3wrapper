@@ -22,11 +22,13 @@ import au.gov.aims.aws.s3.S3Utils;
 import au.gov.aims.aws.s3.entity.S3Client;
 import au.gov.aims.aws.s3.entity.S3File;
 import au.gov.aims.aws.s3.entity.S3List;
+import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3URI;
 import com.amazonaws.services.s3.model.ListObjectsRequest;
 import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
+import org.apache.log4j.Logger;
 
 import java.io.File;
 import java.io.FileFilter;
@@ -35,6 +37,8 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 public class ListManager {
+    private static final Logger LOGGER = Logger.getLogger(ListManager.class);
+    private static final int S3_ATTEMPT = 5;
 
     public static S3List ls(S3Client client, AmazonS3URI s3Uri) {
         return ListManager.ls(client, s3Uri, null, null, false);
@@ -58,6 +62,20 @@ public class ListManager {
     }
 
     private static S3List ls(S3Client client, AmazonS3URI s3Uri, FilenameFilter filenameFilter, FileFilter fileFilter, boolean recursive) {
+        for (int i=0; i<S3_ATTEMPT; i++) {
+            try {
+                return rawLs(client, s3Uri, filenameFilter, fileFilter, recursive);
+            } catch(Throwable ex) {
+                LOGGER.warn(String.format("Error occurred while trying to list files on S3: %s. Attempting to reconnect.",
+                        s3Uri), ex);
+                client.reconnect();
+            }
+        }
+        // Try a last time, to throw the exception
+        return rawLs(client, s3Uri, filenameFilter, fileFilter, recursive);
+    }
+
+    private static S3List rawLs(S3Client client, AmazonS3URI s3Uri, FilenameFilter filenameFilter, FileFilter fileFilter, boolean recursive) {
         S3List s3List = new S3List();
 
         long startTime = System.currentTimeMillis();
@@ -81,7 +99,9 @@ public class ListManager {
             listObjectsRequest = listObjectsRequest.withDelimiter("/");
         }
 
-        ObjectListing objectListing = client.getS3().listObjects(listObjectsRequest);
+        AmazonS3 s3 = client.getS3();
+
+        ObjectListing objectListing = s3.listObjects(listObjectsRequest);
 
         // See: https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/examples-s3-buckets.html
         boolean listIsTruncated = true;
@@ -112,7 +132,8 @@ public class ListManager {
                 }
 
                 if (selected) {
-                    S3Object fullObject = client.getS3().getObject(fileS3Uri.getBucket(), fileS3Uri.getKey());
+                    // Can't reconnect S3 client in a middle of a listing...
+                    S3Object fullObject = s3.getObject(fileS3Uri.getBucket(), fileS3Uri.getKey());
                     s3List.putFile(new S3File(fileS3Uri, fullObject.getObjectMetadata()));
                 }
             }
@@ -155,7 +176,8 @@ public class ListManager {
 
             listIsTruncated = objectListing.isTruncated();
             if (listIsTruncated) {
-                objectListing = client.getS3().listNextBatchOfObjects(objectListing);
+                // Can't reconnect S3 client in a middle of a listing...
+                objectListing = s3.listNextBatchOfObjects(objectListing);
             }
         }
 

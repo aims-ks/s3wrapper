@@ -19,11 +19,17 @@
 package au.gov.aims.aws.s3.entity;
 
 import au.gov.aims.aws.s3.S3Utils;
+import au.gov.aims.aws.s3.manager.BucketManager;
 import com.amazonaws.services.s3.AmazonS3URI;
+import com.amazonaws.services.s3.model.AccessControlList;
+import org.apache.log4j.Logger;
 
 import java.util.Date;
 
 public class S3Bucket {
+    private static final Logger LOGGER = Logger.getLogger(S3Bucket.class);
+    private static final int S3_ATTEMPT = 5;
+
     private final AmazonS3URI s3Uri;
 
     private Long executionTime = null;
@@ -59,12 +65,35 @@ public class S3Bucket {
     }
 
     public boolean isPublic(S3Client client) {
-        String bucketId = this.s3Uri.getBucket();
-
-        if (bucketId == null || !client.getS3().doesBucketExistV2(bucketId)) {
+        AccessControlList bucketAcl = this.getACL(client);
+        if (bucketAcl == null) {
             return false;
         }
 
-        return S3Utils.isPublic(client.getS3().getBucketAcl(bucketId));
+        return S3Utils.isPublic(bucketAcl);
     }
+
+    public AccessControlList getACL(S3Client client) {
+        if (this.s3Uri == null) {
+            return null;
+        }
+
+        String bucketId = this.s3Uri.getBucket();
+        if (bucketId == null || !BucketManager.doesBucketExist(client, bucketId)) {
+            return null;
+        }
+
+        for (int i=0; i<S3_ATTEMPT; i++) {
+            try {
+                return client.getS3().getBucketAcl(bucketId);
+            } catch(Throwable ex) {
+                LOGGER.warn(String.format("Error occurred while accessing a bucket ACL on S3: %s. Attempting to reconnect.",
+                        bucketId), ex);
+                client.reconnect();
+            }
+        }
+        // Try a last time, to throw the exception
+        return client.getS3().getBucketAcl(bucketId);
+    }
+
 }

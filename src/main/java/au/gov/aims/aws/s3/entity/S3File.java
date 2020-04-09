@@ -22,6 +22,8 @@ import au.gov.aims.aws.s3.S3Utils;
 import com.amazonaws.services.s3.AmazonS3URI;
 import com.amazonaws.services.s3.model.AccessControlList;
 import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.S3Object;
+import org.apache.log4j.Logger;
 import org.json.JSONObject;
 
 import java.io.File;
@@ -29,6 +31,9 @@ import java.util.Date;
 import java.util.Map;
 
 public class S3File implements Comparable<S3File> {
+    private static final Logger LOGGER = Logger.getLogger(S3File.class);
+    private static final int S3_ATTEMPT = 5;
+
     public static final String USER_METADATA_LAST_MODIFIED_KEY = "lastmodified";
 
     private final AmazonS3URI s3Uri;
@@ -76,6 +81,34 @@ public class S3File implements Comparable<S3File> {
         this.setETag(objectMetadata.getETag());
         this.setVersionId(objectMetadata.getVersionId());
         this.setFileSize(objectMetadata.getContentLength());
+    }
+
+    public static boolean fileExists(S3Client client, AmazonS3URI sourceUri) {
+        for (int i=0; i<S3_ATTEMPT; i++) {
+            try {
+                return client.getS3().doesObjectExist(sourceUri.getBucket(), sourceUri.getKey());
+            } catch(Throwable ex) {
+                LOGGER.warn(String.format("Error occurred while checking the existence of a file on S3: %s. Attempting to reconnect.",
+                        sourceUri), ex);
+                client.reconnect();
+            }
+        }
+        // Try a last time, to throw the exception
+        return client.getS3().doesObjectExist(sourceUri.getBucket(), sourceUri.getKey());
+    }
+
+    public static S3Object getS3Object(S3Client client, AmazonS3URI sourceUri) {
+        for (int i=0; i<S3_ATTEMPT; i++) {
+            try {
+                return client.getS3().getObject(sourceUri.getBucket(), sourceUri.getKey());
+            } catch(Throwable ex) {
+                LOGGER.warn(String.format("Error occurred while trying to access a file on S3: %s. Attempting to reconnect.",
+                        sourceUri), ex);
+                client.reconnect();
+            }
+        }
+        // Try a last time, to throw the exception
+        return client.getS3().getObject(sourceUri.getBucket(), sourceUri.getKey());
     }
 
 
@@ -161,7 +194,7 @@ public class S3File implements Comparable<S3File> {
     }
 
     public boolean isPublic(S3Client client) {
-        AccessControlList s3FileAcl = client.getS3().getObjectAcl(this.s3Uri.getBucket(), this.s3Uri.getKey());
+        AccessControlList s3FileAcl = this.getACL(client);
         if (s3FileAcl == null) {
             return false;
         }
@@ -169,6 +202,19 @@ public class S3File implements Comparable<S3File> {
         return S3Utils.isPublic(s3FileAcl);
     }
 
+    public AccessControlList getACL(S3Client client) {
+        for (int i=0; i<S3_ATTEMPT; i++) {
+            try {
+                return client.getS3().getObjectAcl(this.s3Uri.getBucket(), this.s3Uri.getKey());
+            } catch(Throwable ex) {
+                LOGGER.warn(String.format("Error occurred while accessing a file ACL on S3: %s. Attempting to reconnect.",
+                        this.s3Uri), ex);
+                client.reconnect();
+            }
+        }
+        // Try a last time, to throw the exception
+        return client.getS3().getObjectAcl(this.s3Uri.getBucket(), this.s3Uri.getKey());
+    }
 
     public JSONObject toJSON() {
         JSONObject json = new JSONObject();

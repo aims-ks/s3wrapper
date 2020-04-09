@@ -68,7 +68,7 @@ public class FileWrapper implements Comparable<FileWrapper> {
             try {
                 this.uri = new URI("file://" + uri.toString());
             } catch(Exception ex) {
-                LOGGER.error("Invalid file URI: " + uri, ex);
+                LOGGER.error(String.format("Invalid file URI: %s", uri), ex);
                 this.uri = uri;
             }
         } else {
@@ -122,7 +122,7 @@ public class FileWrapper implements Comparable<FileWrapper> {
                     return false;
                 }
                 AmazonS3URI s3URI = new AmazonS3URI(this.uri);
-                return client.getS3().doesObjectExist(s3URI.getBucket(), s3URI.getKey());
+                return S3File.fileExists(client, s3URI);
             } else if ("file".equals(scheme)) {
                 return new File(this.uri).exists();
             }
@@ -168,6 +168,7 @@ public class FileWrapper implements Comparable<FileWrapper> {
             if ("s3".equals(this.uri.getScheme())) {
                 if (client != null) {
                     AmazonS3URI s3URI =  new AmazonS3URI(this.uri);
+
                     S3List s3List = ListManager.ls(client, s3URI);
                     return s3List.getFiles().get(s3URI.getKey());
                 }
@@ -282,20 +283,10 @@ public class FileWrapper implements Comparable<FileWrapper> {
             }
 
             if (downloadedNeeded) {
-                String scheme = this.uri.getScheme();
-                if ("s3".equals(scheme)) {
-                    if (client != null) {
-                        AmazonS3URI s3URI =  new AmazonS3URI(this.uri);
-                        if (!client.getS3().doesObjectExist(s3URI.getBucket(), s3URI.getKey())) {
-                            return null;
-                        }
-                    }
-                } else if ("file".equals(scheme)) {
-                    File file = new File(this.uri);
-                    if (!file.exists()) {
-                        return null;
-                    }
+                if (!this.exists(client)) {
+                    return null;
                 }
+
                 this.forceDownloadFile(client);
             }
         }

@@ -6,14 +6,16 @@
 
     <groupId>au.gov.aims</groupId>
     <artifactId>s3wrapper</artifactId>
-    <version>0.3.29</version>
+    <version>0.4.0</version>
     <packaging>jar</packaging>
     <name>S3 Wrapper</name>
     <description>S3 Wrapper made to simplify the Amazon S3 API.</description>
 
     <properties>
-        <maven.compiler.source>1.7</maven.compiler.source>
-        <maven.compiler.target>1.7</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
     </properties>
 
     <dependencies>

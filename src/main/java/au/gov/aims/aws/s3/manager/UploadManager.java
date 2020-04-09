@@ -40,6 +40,7 @@ import java.util.Map;
 
 public class UploadManager {
     private static final Logger LOGGER = Logger.getLogger(UploadManager.class);
+    private static final int S3_ATTEMPT = 5;
 
     // S3 have a 5 GB limit for file upload in a single request.
     // Larger files needs to be uploaded by chunks (minimum file size of 5 MB).
@@ -56,14 +57,28 @@ public class UploadManager {
     private static final long S3_MULTIPART_UPLOAD_PART_SIZE = 100L * Constants.MB;
 
     public static S3List upload(S3Client client, File sourceFile, AmazonS3URI destinationUri) throws IOException, InterruptedException {
+        if (!BucketManager.doesBucketExist(client, destinationUri.getBucket())) {
+            throw new IOException(String.format("Bucket %s doesn't exist.", destinationUri.getBucket()));
+        }
+
+        for (int i=0; i<S3_ATTEMPT; i++) {
+            try {
+                return UploadManager.rawUpload(client, sourceFile, destinationUri);
+            } catch(Throwable ex) {
+                LOGGER.warn(String.format("Error occurred while trying to upload the file %s on S3: %s. Attempting to reconnect.",
+                        sourceFile, destinationUri), ex);
+                client.reconnect();
+            }
+        }
+        // Try a last time, to throw the exception
+        return UploadManager.rawUpload(client, sourceFile, destinationUri);
+    }
+
+    private static S3List rawUpload(S3Client client, File sourceFile, AmazonS3URI destinationUri) throws IOException, InterruptedException {
         S3List s3List;
 
         TransferManager transferManager = null;
         try {
-            if (!client.getS3().doesBucketExistV2(destinationUri.getBucket())) {
-                throw new IOException(String.format("Bucket %s doesn't exist.", destinationUri.getBucket()));
-            }
-
             // Code sample:
             // https://docs.aws.amazon.com/AmazonS3/latest/dev/HLuploadFileJava.html
             transferManager = TransferManagerBuilder.standard()
@@ -81,7 +96,6 @@ public class UploadManager {
             s3List = UploadManager.upload(transferManager, sourceFile, destinationUri, bucketIsPublic);
 
             long endTime = System.currentTimeMillis();
-
 
             s3List.setExecutionTime(endTime - startTime);
         } finally {

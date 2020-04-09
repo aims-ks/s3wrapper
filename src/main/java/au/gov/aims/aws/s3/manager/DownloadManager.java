@@ -42,7 +42,7 @@ public class DownloadManager {
     public static S3List download(S3Client client, AmazonS3URI sourceUri, File destinationFile) throws IOException {
         S3List s3List = new S3List();
 
-        if (!client.getS3().doesBucketExistV2(sourceUri.getBucket())) {
+        if (!BucketManager.doesBucketExist(client, sourceUri.getBucket())) {
             throw new IOException(String.format("Bucket %s doesn't exist.", sourceUri.getBucket()));
         }
 
@@ -93,10 +93,6 @@ public class DownloadManager {
         return s3List;
     }
 
-    public static boolean fileExists(S3Client client, AmazonS3URI sourceUri) {
-        return client.getS3().doesObjectExist(sourceUri.getBucket(), sourceUri.getKey());
-    }
-
     private static S3File downloadFile(S3Client client, AmazonS3URI sourceUri, File destinationFile) throws IOException {
         // Download a single file
         if (destinationFile.exists()) {
@@ -117,10 +113,10 @@ public class DownloadManager {
         S3ObjectInputStream s3FileInputStream = null;
 
         try {
-            if (!DownloadManager.fileExists(client, sourceUri)) {
+            if (!S3File.fileExists(client, sourceUri)) {
                 throw new FileNotFoundException(String.format("File not found: %s", sourceUri.toString()));
             } else {
-                s3Object = client.getS3().getObject(sourceUri.getBucket(), sourceUri.getKey());
+                s3Object = S3File.getS3Object(client, sourceUri);
                 if (s3Object != null) {
                     ObjectMetadata metadata = s3Object.getObjectMetadata();
                     s3File = new S3File(sourceUri, metadata);
