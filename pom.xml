@@ -52,4 +52,11 @@
         </dependency>
     </dependencies>
 
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub AIMS-KS Apache Maven Packages</name>
+            <url>https://maven.pkg.github.com/aims-ks/s3wrapper</url>
+        </repository>
+    </distributionManagement>
 </project>
