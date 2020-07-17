@@ -48,7 +48,9 @@ public class PropertiesLoader {
 
         try {
             input = PropertiesLoader.class.getClassLoader().getResourceAsStream(classpath);
-            properties = PropertiesLoader.load(input);
+            if (input != null) {
+                properties = PropertiesLoader.load(input);
+            }
         } finally {
             if (input != null) {
                 input.close();

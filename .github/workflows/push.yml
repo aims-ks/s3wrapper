@@ -1,24 +1,3 @@
 # Workflow executed on "push" events.
-name: push
-
-on: push
-
-jobs:
-
-  # Run tests in Maven.
-  test:
-    runs-on: ubuntu-latest
-
-    container:
-      image: maven:3.6-alpine
-
-    steps:
-
-      # Retrieve the code from Github.
-      # Use branch "v2" of the "checkout" plugin
-      - uses: actions/checkout@v2
-        
-      - name: Execute tests with Maven.
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn -B --settings settings.xml clean test
+# *IMPORTANT* Tests can NOT be run automatically since they require a AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY
+#   with write access to S3. It's NOT a good idea to provide that kind of credentials in a public repository.
