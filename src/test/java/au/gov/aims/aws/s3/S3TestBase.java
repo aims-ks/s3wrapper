@@ -30,7 +30,11 @@ import java.net.URL;
 
 public class S3TestBase {
     private static final Logger LOGGER = Logger.getLogger(S3TestBase.class);
-    protected static final String S3_BUCKET_ID = "aims-s3wrapper-junit-test";
+    // NOTE: The bucket was created in the eReefs-test AWS account
+    //     The credentials are in src/text/resources/aws-credentials.properties
+    // Content of the bucket:
+    //     src/resources/bucket_files
+    protected static final String S3_BUCKET_ID = "aims-junit-test-s3wrapper";
 
     protected S3Client openS3Client() throws Exception {
         return S3Client.parse(PropertiesLoader.load("aws-credentials.properties"));

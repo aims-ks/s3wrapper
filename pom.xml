@@ -6,7 +6,7 @@
 
     <groupId>au.gov.aims</groupId>
     <artifactId>s3wrapper</artifactId>
-    <version>0.4.0</version>
+    <version>0.4.1</version>
     <packaging>jar</packaging>
     <name>S3 Wrapper</name>
     <description>S3 Wrapper made to simplify the Amazon S3 API.</description>
@@ -18,11 +18,20 @@
         <maven.compiler.target>1.8</maven.compiler.target>
     </properties>
 
+    <repositories>
+        <!-- Open AIMS maven repository on GitHub -->
+        <repository>
+            <id>github_openaims</id>
+            <name>GitHub Open-AIMS repo</name>
+            <url>https://maven.pkg.github.com/open-AIMS/*</url>
+        </repository>
+    </repositories>
+
     <dependencies>
         <dependency>
-            <groupId>log4j</groupId>
+            <groupId>au.gov.aims</groupId>
             <artifactId>log4j</artifactId>
-            <version>1.2.17</version>
+            <version>1.2.17-aims</version>
         </dependency>
 
         <dependency>
@@ -34,20 +43,20 @@
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
-            <version>2.6</version>
+            <version>2.11.0</version>
         </dependency>
 
         <!-- AWS Java API - This packages have a LOT of dependencies... -->
         <dependency>
             <groupId>com.amazonaws</groupId>
             <artifactId>aws-java-sdk</artifactId>
-            <version>1.11.685</version>
+            <version>1.12.131</version>
         </dependency>
 
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.12</version>
+            <version>4.13.2</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
