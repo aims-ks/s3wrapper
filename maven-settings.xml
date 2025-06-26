@@ -6,19 +6,19 @@
         <!-- Used to deploy the package to GitHub -->
         <server>
             <id>github</id>
-            <username>${env.GITHUB_USERNAME}</username>
+            <username>github-actions</username>
             <password>${env.GITHUB_TOKEN}</password>
         </server>
         <!-- Used by GitHub server to resolve AIMS-KS dependencies when running tests or building the package -->
         <server>
             <id>github_aimsks</id>
-            <username>${env.GITHUB_USERNAME}</username>
+            <username>github-actions</username>
             <password>${env.GITHUB_TOKEN}</password>
         </server>
         <!-- Used by GitHub server to resolve Open-AIMS dependencies when running tests or building the package -->
         <server>
             <id>github_openaims</id>
-            <username>${env.GITHUB_USERNAME}</username>
+            <username>github-actions</username>
             <password>${env.GITHUB_TOKEN}</password>
         </server>
     </servers>
