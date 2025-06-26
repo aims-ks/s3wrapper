@@ -1,3 +1,14 @@
 # Workflow executed on "push" events.
 # *IMPORTANT* Tests can NOT be run automatically since they require a AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY
 #   with write access to S3. It's NOT a good idea to provide that kind of credentials in a public repository.
+#   The release.yml file compile the project without running the tests.
+#
+# Create a new release
+#   Releases are created manually.
+#   1. Create a new Git tag, push it to GitHub
+#   2. Go to https://github.com/aims-ks/s3wrapper/
+#   3. Tab "Code", click "Releases" on the right menu
+#   4. Click the "Draft a new release" button
+#     Choose a tag: Select the tag you just created
+#     Release title / desc: Describe what is significant about that new version
+#     Click the "Publish release" button
