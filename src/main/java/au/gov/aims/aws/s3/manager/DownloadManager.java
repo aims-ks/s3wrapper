@@ -19,15 +19,15 @@
 package au.gov.aims.aws.s3.manager;
 
 import au.gov.aims.aws.s3.S3Utils;
-import au.gov.aims.aws.s3.entity.S3Client;
+import au.gov.aims.aws.s3.entity.S3ClientWrapper;
 import au.gov.aims.aws.s3.entity.S3File;
 import au.gov.aims.aws.s3.entity.S3List;
-import com.amazonaws.services.s3.AmazonS3URI;
-import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.s3.model.S3Object;
-import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Logger;
+import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.services.s3.S3Uri;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.File;
@@ -39,13 +39,14 @@ public class DownloadManager {
     private static final Logger LOGGER = Logger.getLogger(DownloadManager.class);
 
     // See: https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/examples-s3-objects.html#download-object
-    public static S3List download(S3Client client, AmazonS3URI sourceUri, File destinationFile) throws IOException {
+    public static S3List download(S3ClientWrapper client, S3Uri sourceUri, File destinationFile) throws IOException {
         S3List s3List = new S3List();
 
-        if (!BucketManager.doesBucketExist(client, sourceUri.getBucket())) {
-            throw new IOException(String.format("Bucket %s doesn't exist.", sourceUri.getBucket()));
-        }
+        String bucket = sourceUri.bucket().orElseThrow(() -> new IllegalArgumentException("Missing bucket"));
 
+        if (!BucketManager.bucketExists(client, bucket)) {
+            throw new IOException(String.format("Bucket %s doesn't exist.", bucket));
+        }
 
         long startTime = System.currentTimeMillis();
 
@@ -93,7 +94,7 @@ public class DownloadManager {
         return s3List;
     }
 
-    private static S3File downloadFile(S3Client client, AmazonS3URI sourceUri, File destinationFile) throws IOException {
+    private static S3File downloadFile(S3ClientWrapper client, S3Uri sourceUri, File destinationFile) throws IOException {
         // Download a single file
         if (destinationFile.exists()) {
             if (destinationFile.isDirectory()) {
@@ -109,26 +110,21 @@ public class DownloadManager {
 
         S3File s3File = null;
 
-        S3Object s3Object = null;
-        S3ObjectInputStream s3FileInputStream = null;
+        if (!S3File.fileExists(client, sourceUri)) {
+            throw new FileNotFoundException(String.format("File not found: %s", sourceUri.toString()));
+        } else {
+            HeadObjectResponse metadata = S3File.getS3ObjectMetadata(client, sourceUri);
+            if (metadata != null) {
+                s3File = new S3File(sourceUri, metadata);
+                s3File.setLocalFile(destinationFile);
 
-        try {
-            if (!S3File.fileExists(client, sourceUri)) {
-                throw new FileNotFoundException(String.format("File not found: %s", sourceUri.toString()));
-            } else {
-                s3Object = S3File.getS3Object(client, sourceUri);
-                if (s3Object != null) {
-                    ObjectMetadata metadata = s3Object.getObjectMetadata();
-                    s3File = new S3File(sourceUri, metadata);
-                    s3File.setLocalFile(destinationFile);
+                LOGGER.debug(String.format("Downloading %s to %s", sourceUri, destinationFile));
 
-                    LOGGER.debug(String.format("Downloading %s to %s", sourceUri, destinationFile));
-                    s3FileInputStream = s3Object.getObjectContent();
+                try (ResponseInputStream<GetObjectResponse> s3FileInputStream = S3File.getS3ObjectInputStream(client, sourceUri)) {
                     if (s3FileInputStream != null) {
                         FileUtils.copyToFile(s3FileInputStream, destinationFile);
 
-                        //FileUtils.copyToFile(s3FileInputStream, destinationFile);
-                        Long lastModified = s3File.getLastModified();
+                        Long lastModified = s3File.getLastModified(client);
                         if (lastModified != null) {
                             boolean lastModifiedSet = destinationFile.setLastModified(lastModified);
                             if (!lastModifiedSet) {
@@ -139,24 +135,9 @@ public class DownloadManager {
                     } else {
                         LOGGER.error(String.format("Can not download the file %s, input stream is null.", sourceUri.toString()));
                     }
-                } else {
-                    LOGGER.error(String.format("Can not download the file %s, file object is null.", sourceUri.toString()));
                 }
-            }
-        } finally {
-            if (s3FileInputStream != null) {
-                try {
-                    s3FileInputStream.close();
-                } catch(Exception ex) {
-                    LOGGER.error("Could not close the S3 input stream.", ex);
-                }
-            }
-            if (s3Object != null) {
-                try {
-                    s3Object.close();
-                } catch(Exception ex) {
-                    LOGGER.error("Could not close the S3 file.", ex);
-                }
+            } else {
+                LOGGER.error(String.format("Can not download the file %s, file object is null.", sourceUri.toString()));
             }
         }
 

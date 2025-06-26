@@ -20,27 +20,29 @@ package au.gov.aims.aws.s3.entity;
 
 import au.gov.aims.aws.s3.S3Utils;
 import au.gov.aims.aws.s3.manager.BucketManager;
-import com.amazonaws.services.s3.AmazonS3URI;
-import com.amazonaws.services.s3.model.AccessControlList;
 import org.apache.log4j.Logger;
+import software.amazon.awssdk.services.s3.S3Uri;
+import software.amazon.awssdk.services.s3.model.GetBucketAclRequest;
+import software.amazon.awssdk.services.s3.model.GetBucketAclResponse;
+import software.amazon.awssdk.services.s3.model.Grant;
 
 import java.util.Date;
+import java.util.List;
 
 public class S3Bucket {
     private static final Logger LOGGER = Logger.getLogger(S3Bucket.class);
     private static final int S3_ATTEMPT = 5;
 
-    private final AmazonS3URI s3Uri;
+    private final S3Uri s3Uri;
 
     private Long executionTime = null;
-    private Long creationTime = null;
 
-    public S3Bucket(String bucketId) {
-        this.s3Uri = S3Utils.getS3URI(bucketId);
+    public S3Bucket(String bucket) {
+        this.s3Uri = S3Utils.getS3URI(bucket);
     }
 
-    public String getBucketId() {
-        return this.s3Uri.getBucket();
+    public String getBucket() {
+        return this.s3Uri.bucket().orElse(null);
     }
 
     public void setExecutionTime(Long executionTime) {
@@ -50,50 +52,43 @@ public class S3Bucket {
         return this.executionTime;
     }
 
-    public void setCreationTime(Long creationTime) {
-        this.creationTime = creationTime;
-    }
-    public Long getCreationTime() {
-        return this.creationTime;
-    }
-    public void setCreationTime(Date creationDate) {
-        if (creationDate == null) {
-            this.creationTime = null;
-        } else {
-            this.setCreationTime(creationDate.getTime());
-        }
-    }
-
-    public boolean isPublic(S3Client client) {
-        AccessControlList bucketAcl = this.getACL(client);
-        if (bucketAcl == null) {
+    public boolean isPublic(S3ClientWrapper client) {
+        List<Grant> bucketAcl = this.getACL(client);
+        if (bucketAcl == null || bucketAcl.isEmpty()) {
             return false;
         }
 
         return S3Utils.isPublic(bucketAcl);
     }
 
-    public AccessControlList getACL(S3Client client) {
+    public List<Grant> getACL(S3ClientWrapper client) {
         if (this.s3Uri == null) {
             return null;
         }
 
-        String bucketId = this.s3Uri.getBucket();
-        if (bucketId == null || !BucketManager.doesBucketExist(client, bucketId)) {
+        String bucket = this.s3Uri.bucket().orElse(null);
+        if (bucket == null || !BucketManager.bucketExists(client, bucket)) {
             return null;
         }
 
+        GetBucketAclRequest aclRequest = GetBucketAclRequest.builder()
+                    .bucket(bucket)
+                    .build();
+
+        GetBucketAclResponse aclResponse = null;
         for (int i=0; i<S3_ATTEMPT; i++) {
             try {
-                return client.getS3().getBucketAcl(bucketId);
+                aclResponse = client.getS3Client().getBucketAcl(aclRequest);
+                return aclResponse.grants();
             } catch(Throwable ex) {
                 LOGGER.warn(String.format("Error occurred while accessing a bucket ACL on S3: %s. Attempting to reconnect.",
-                        bucketId), ex);
+                        bucket), ex);
                 client.reconnect();
             }
         }
         // Try a last time, to throw the exception
-        return client.getS3().getBucketAcl(bucketId);
+        aclResponse = client.getS3Client().getBucketAcl(aclRequest);
+        return aclResponse.grants();
     }
 
 }

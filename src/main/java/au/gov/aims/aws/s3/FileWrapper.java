@@ -18,15 +18,15 @@
  */
 package au.gov.aims.aws.s3;
 
-import au.gov.aims.aws.s3.entity.S3Client;
+import au.gov.aims.aws.s3.entity.S3ClientWrapper;
 import au.gov.aims.aws.s3.entity.S3File;
 import au.gov.aims.aws.s3.entity.S3List;
 import au.gov.aims.aws.s3.manager.DownloadManager;
 import au.gov.aims.aws.s3.manager.ListManager;
 import au.gov.aims.aws.s3.manager.UploadManager;
-import com.amazonaws.services.s3.AmazonS3URI;
 import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Logger;
+import software.amazon.awssdk.services.s3.S3Uri;
 
 import java.io.File;
 import java.io.FileFilter;
@@ -52,9 +52,9 @@ public class FileWrapper implements Comparable<FileWrapper> {
     private boolean downloaded = false;
     private boolean uploaded = false;
 
-    public FileWrapper(AmazonS3URI s3URI, File ioFile) {
+    public FileWrapper(S3Uri s3Uri, File ioFile) {
         this.ioFile = ioFile;
-        this.uri = s3URI.getURI();
+        this.uri = s3Uri.uri();
     }
 
     /**
@@ -114,14 +114,14 @@ public class FileWrapper implements Comparable<FileWrapper> {
         return false;
     }
 
-    public boolean exists(S3Client client) {
+    public boolean exists(S3ClientWrapper client) {
         if (this.uri != null) {
             String scheme = this.uri.getScheme();
             if ("s3".equals(scheme)) {
                 if (client == null) {
                     return false;
                 }
-                AmazonS3URI s3URI = new AmazonS3URI(this.uri);
+                S3Uri s3URI = S3Utils.getS3URIFromURI(this.uri);
                 return S3File.fileExists(client, s3URI);
             } else if ("file".equals(scheme)) {
                 return new File(this.uri).exists();
@@ -151,9 +151,9 @@ public class FileWrapper implements Comparable<FileWrapper> {
         return this.ioFile;
     }
 
-    public AmazonS3URI getS3URI() {
+    public S3Uri getS3URI() {
         if (this.uri != null && "s3".equals(this.uri.getScheme())) {
-            return new AmazonS3URI(this.uri);
+            return S3Utils.getS3URIFromURI(this.uri);
         }
 
         return null;
@@ -163,14 +163,14 @@ public class FileWrapper implements Comparable<FileWrapper> {
         return this.uri;
     }
 
-    public S3File getS3File(S3Client client) {
+    public S3File getS3File(S3ClientWrapper client) {
         if (this.uri != null) {
             if ("s3".equals(this.uri.getScheme())) {
                 if (client != null) {
-                    AmazonS3URI s3URI =  new AmazonS3URI(this.uri);
+                    S3Uri s3URI = S3Utils.getS3URIFromURI(this.uri);
 
                     S3List s3List = ListManager.ls(client, s3URI);
-                    return s3List.getFiles().get(s3URI.getKey());
+                    return s3List.getFiles().get(s3URI.key().orElse(null));
                 }
             }
         }
@@ -178,14 +178,14 @@ public class FileWrapper implements Comparable<FileWrapper> {
         return null;
     }
 
-    public Long getS3FileSize(S3Client client) {
+    public Long getS3FileSize(S3ClientWrapper client) {
         if (this.uri != null) {
             String scheme = this.uri.getScheme();
             if ("s3".equals(scheme)) {
                 if (client != null) {
                     S3File s3File = this.getS3File(client);
                     if (s3File != null) {
-                        return s3File.getFileSize();
+                        return s3File.getFileSize(client);
                     }
                 }
             } else if ("file".equals(scheme)) {
@@ -199,14 +199,14 @@ public class FileWrapper implements Comparable<FileWrapper> {
         return null;
     }
 
-    public Long getS3LastModified(S3Client client) {
+    public Long getS3LastModified(S3ClientWrapper client) {
         if (this.uri != null) {
             String scheme = this.uri.getScheme();
             if ("s3".equals(scheme)) {
                 if (client != null) {
                     S3File s3File = this.getS3File(client);
                     if (s3File != null) {
-                        return s3File.getLastModified();
+                        return s3File.getLastModified(client);
                     }
                 }
             } else if ("file".equals(scheme)) {
@@ -220,7 +220,7 @@ public class FileWrapper implements Comparable<FileWrapper> {
         return null;
     }
 
-    public Long getLastModified(S3Client client) {
+    public Long getLastModified(S3ClientWrapper client) {
         if (this.isOriginalOnDisk()) {
             return this.ioFile.lastModified();
         }
@@ -228,7 +228,7 @@ public class FileWrapper implements Comparable<FileWrapper> {
         return this.getS3LastModified(client);
     }
 
-    public boolean isOutdated(S3Client client) {
+    public boolean isOutdated(S3ClientWrapper client) {
         if (this.uri == null || this.ioFile == null) {
             return false;
         }
@@ -263,11 +263,11 @@ public class FileWrapper implements Comparable<FileWrapper> {
         return s3FileSize != downloadedFileSize;
     }
 
-    public File downloadFile(S3Client client) throws IOException {
+    public File downloadFile(S3ClientWrapper client) throws IOException {
         return this.downloadFile(client, false);
     }
 
-    public File downloadFile(S3Client client, boolean forceDownload) throws IOException {
+    public File downloadFile(S3ClientWrapper client, boolean forceDownload) throws IOException {
         if (this.uri != null && this.ioFile != null) {
             boolean downloadedNeeded = false;
 
@@ -294,12 +294,12 @@ public class FileWrapper implements Comparable<FileWrapper> {
         return this.ioFile;
     }
 
-    private void forceDownloadFile(S3Client client) throws IOException {
+    private void forceDownloadFile(S3ClientWrapper client) throws IOException {
         if (this.uri != null && this.ioFile != null) {
             String scheme = this.uri.getScheme();
             if ("s3".equals(scheme)) {
                 if (client != null) {
-                    AmazonS3URI s3URI =  new AmazonS3URI(this.uri);
+                    S3Uri s3URI = S3Utils.getS3URIFromURI(this.uri);
                     DownloadManager.download(client, s3URI, this.ioFile);
                     this.downloaded = true;
                 }
@@ -343,12 +343,12 @@ public class FileWrapper implements Comparable<FileWrapper> {
         return false;
     }
 
-    public void uploadFile(S3Client client) throws IOException, InterruptedException {
+    public void uploadFile(S3ClientWrapper client) throws IOException, InterruptedException {
         if (this.uri != null && this.ioFile != null) {
             String scheme = this.uri.getScheme();
             if ("s3".equals(scheme)) {
                 if (client != null) {
-                    AmazonS3URI s3URI =  new AmazonS3URI(this.uri);
+                    S3Uri s3URI = S3Utils.getS3URIFromURI(this.uri);
                     UploadManager.upload(client, this.ioFile, s3URI);
                     this.uploaded = true;
                 }
@@ -364,31 +364,31 @@ public class FileWrapper implements Comparable<FileWrapper> {
 
 
     // Similar to io.File.listFiles()
-    public List<FileWrapper> listFiles(S3Client client) {
+    public List<FileWrapper> listFiles(S3ClientWrapper client) {
         return this.listFiles(client, null, null, false);
     }
-    public List<FileWrapper> listFiles(S3Client client, boolean recursive) {
+    public List<FileWrapper> listFiles(S3ClientWrapper client, boolean recursive) {
         return this.listFiles(client, null, null, recursive);
     }
 
     // Similar to io.File.listFiles(FilenameFilter)
-    public List<FileWrapper> listFiles(S3Client client, FilenameFilter filenameFilter) {
+    public List<FileWrapper> listFiles(S3ClientWrapper client, FilenameFilter filenameFilter) {
         return this.listFiles(client, filenameFilter, null, false);
     }
-    public List<FileWrapper> listFiles(S3Client client, FilenameFilter filenameFilter, boolean recursive) {
+    public List<FileWrapper> listFiles(S3ClientWrapper client, FilenameFilter filenameFilter, boolean recursive) {
         return this.listFiles(client, filenameFilter, null, recursive);
     }
 
     // Similar to io.File.listFiles(FileFilter)
-    public List<FileWrapper> listFiles(S3Client client, FileFilter fileFilter) {
+    public List<FileWrapper> listFiles(S3ClientWrapper client, FileFilter fileFilter) {
         return this.listFiles(client, null, fileFilter, false);
     }
-    public List<FileWrapper> listFiles(S3Client client, FileFilter fileFilter, boolean recursive) {
+    public List<FileWrapper> listFiles(S3ClientWrapper client, FileFilter fileFilter, boolean recursive) {
         return this.listFiles(client, null, fileFilter, recursive);
     }
 
     // Similar to FileUtils.listFiles(File, String[], boolean)
-    public List<FileWrapper> listFiles(S3Client client, final String[] extensions, boolean recursive) {
+    public List<FileWrapper> listFiles(S3ClientWrapper client, final String[] extensions, boolean recursive) {
         return this.listFiles(client, new FilenameFilter() {
             @Override
             public boolean accept(File dir, String name) {
@@ -405,14 +405,14 @@ public class FileWrapper implements Comparable<FileWrapper> {
         }, null, recursive);
     }
 
-    private List<FileWrapper> listFiles(S3Client client, FilenameFilter filenameFilter, FileFilter fileFilter, boolean recursive) {
+    private List<FileWrapper> listFiles(S3ClientWrapper client, FilenameFilter filenameFilter, FileFilter fileFilter, boolean recursive) {
         List<FileWrapper> fileWrappers = null;
 
         if (this.uri != null) {
             String scheme = this.uri.getScheme();
             if ("s3".equals(scheme)) {
                 if (client != null) {
-                    AmazonS3URI s3URI =  new AmazonS3URI(this.uri);
+                    S3Uri s3URI = S3Utils.getS3URIFromURI(this.uri);
 
                     S3List s3List;
                     if (filenameFilter != null) {
@@ -489,16 +489,13 @@ public class FileWrapper implements Comparable<FileWrapper> {
         List<FileWrapper> fileWrapperList = new ArrayList<FileWrapper>();
 
         if (s3List != null) {
-            AmazonS3URI s3URI = this.uri == null ? null : new AmazonS3URI(this.uri);
-            String thisKey = s3URI == null ? "" : s3URI.getKey();
-            if (thisKey == null) {
-                thisKey = "";
-            }
+            S3Uri s3URI = this.uri == null ? null : S3Utils.getS3URIFromURI(this.uri);
+            String thisKey = s3URI == null ? "" : s3URI.key().orElse("");
 
             Map<String, S3File> dirs = s3List.getDirs();
             for (S3File s3File : dirs.values()) {
-                AmazonS3URI dirUri = s3File.getS3Uri();
-                String dirKey = dirUri.getKey();
+                S3Uri dirUri = s3File.getS3Uri();
+                String dirKey = dirUri.key().orElse("");
                 String dirKeySuffix = dirKey.substring(thisKey.length());
 
                 fileWrapperList.add(new FileWrapper(dirUri, new File(this.ioFile, dirKeySuffix)));
@@ -506,8 +503,8 @@ public class FileWrapper implements Comparable<FileWrapper> {
 
             Map<String, S3File> files = s3List.getFiles();
             for (S3File s3File : files.values()) {
-                AmazonS3URI fileUri = s3File.getS3Uri();
-                String fileKey = fileUri.getKey();
+                S3Uri fileUri = s3File.getS3Uri();
+                String fileKey = fileUri.key().orElse("");
                 String fileKeySuffix = fileKey.substring(thisKey.length());
 
                 fileWrapperList.add(new FileWrapper(fileUri, new File(this.ioFile, fileKeySuffix)));

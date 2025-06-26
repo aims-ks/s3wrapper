@@ -34,14 +34,14 @@ public class S3List {
     }
 
     public S3File putFile(S3File s3File) {
-        return this.files.put(s3File.getS3Uri().getKey(), s3File);
+        return this.files.put(s3File.getS3Uri().key().orElse(""), s3File);
     }
     public Map<String, S3File> getFiles() {
         return this.files;
     }
 
     public S3File putDir(S3File s3File) {
-        return this.dirs.put(s3File.getS3Uri().getKey(), s3File);
+        return this.dirs.put(s3File.getS3Uri().key().orElse(""), s3File);
     }
     public Map<String, S3File> getDirs() {
         return this.dirs;

@@ -18,23 +18,32 @@
  */
 package au.gov.aims.aws.s3;
 
-import com.amazonaws.services.s3.AmazonS3URI;
-import com.amazonaws.services.s3.model.AccessControlList;
-import com.amazonaws.services.s3.model.Grant;
-import com.amazonaws.services.s3.model.GroupGrantee;
-import com.amazonaws.services.s3.model.Permission;
 import org.apache.log4j.Logger;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3Uri;
+import software.amazon.awssdk.services.s3.S3Utilities;
+import software.amazon.awssdk.services.s3.model.Grant;
+import software.amazon.awssdk.services.s3.model.Grantee;
+import software.amazon.awssdk.services.s3.model.Permission;
+import software.amazon.awssdk.services.s3.model.Type;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.List;
 import java.util.regex.Pattern;
 
 public class S3Utils {
-    private static final Logger LOGGER = Logger.getLogger(S3Utils.class);
-    private static final String S3_SCHEME = "s3";
-    private static final String S3_PROTOCOL = S3_SCHEME + "://";
+    public static final Region DEFAULT_REGION = Region.AP_SOUTHEAST_2;
 
+    protected static final String S3_SCHEME = "s3";
+    protected static final String S3_PROTOCOL = S3_SCHEME + "://";
+
+    private static final Logger LOGGER = Logger.getLogger(S3Utils.class);
+
+    // Used when parsing URLs from config files
     public static boolean isS3URI(String uri) {
         if (uri == null) {
             return false;
@@ -59,55 +68,81 @@ public class S3Utils {
         return true;
     }
 
-    public static AmazonS3URI getS3URI(String bucketId) {
+    public static S3Uri getS3URI(String bucketId) {
         return S3Utils.getS3URI(bucketId, null);
     }
 
-    public static AmazonS3URI getS3URI(String bucketId, String folder, String filename) {
-        if (bucketId == null || bucketId.isEmpty()) {
-            throw new IllegalArgumentException("Bucket ID muct not be null.");
-        }
-        if (bucketId.contains("/")) {
-            throw new IllegalArgumentException("Invalid Bucket ID: " + bucketId);
-        }
-
+    public static S3Uri getS3URI(String bucket, String folder, String filename) {
         if (filename == null || filename.isEmpty()) {
-            return S3Utils.getS3URI(bucketId, folder);
+            return S3Utils.getS3URI(bucket, folder);
         }
 
         if (folder == null || folder.isEmpty()) {
-            folder = "/";
-        }
-        if (!folder.startsWith("/")) {
-            folder = '/' + folder;
-        }
-        if (!folder.endsWith("/")) {
+            folder = "";
+        } else if (!folder.endsWith("/")) {
             folder += '/';
         }
 
-        return S3Utils.getS3URI(bucketId, folder + filename);
+        String key = folder + filename;
+
+        return getS3URI(bucket, key);
     }
 
-    public static AmazonS3URI getS3URI(String bucketId, String filePath) {
-        if (bucketId == null || bucketId.isEmpty()) {
-            throw new IllegalArgumentException("Bucket ID muct not be null.");
+    public static S3Uri getS3URI(String bucket, String key) {
+        if (bucket == null || bucket.isEmpty()) {
+            throw new IllegalArgumentException("Bucket ID must not be null.");
         }
-        if (bucketId.contains("/")) {
-            throw new IllegalArgumentException("Invalid Bucket ID: " + bucketId);
-        }
-
-        if (filePath == null || filePath.isEmpty()) {
-            filePath = "/";
-        }
-        if (!filePath.startsWith("/")) {
-            filePath = '/' + filePath;
+        if (bucket.contains("/")) {
+            throw new IllegalArgumentException("Invalid Bucket ID: " + bucket);
         }
 
-        // Collapse multiple successive occurrences of "/"
-        // Example: "//folder///file" => "/folder/file"
-        filePath = filePath.replaceAll("/{2,}", "/");
+        return S3Utils.buildS3URI(bucket, key, null);
+    }
 
-        return new AmazonS3URI(S3Utils.S3_PROTOCOL + bucketId + filePath);
+    public static S3Uri getS3URIFromURI(URI fileUri) {
+        return S3Utils.buildS3URI(null, null, fileUri);
+    }
+
+    private static S3Uri buildS3URI(String bucket, String key, URI s3FileUri) {
+        boolean validBucket = bucket != null && !bucket.isEmpty();
+        boolean validUri = s3FileUri != null && S3Utils.S3_SCHEME.equals(s3FileUri.getScheme());
+
+        if (!validBucket && !validUri) {
+            return null;
+        }
+
+        if (key == null || key.isEmpty()) {
+            key = "";
+        } else {
+            key = key.replaceAll("/{2,}", "/");
+        }
+
+        if (key.startsWith("/")) {
+            key = key.substring(1);
+        }
+
+        if (!validUri) {
+            // Craft a URI from the bucket and key
+            try {
+                s3FileUri = new URI("s3", bucket, "/" + key, null);
+            } catch (URISyntaxException ex) {
+                return null;
+            }
+        }
+
+        if (!validBucket) {
+            // Extract the bucket and key from the URI
+            S3Client s3client = S3Client.create(); // Dummy client
+            S3Utilities utilities = s3client.utilities();
+
+            return utilities.parseUri(s3FileUri);
+        }
+
+        return S3Uri.builder()
+            .bucket(bucket)
+            .key(key.isEmpty() ? null : key)
+            .uri(s3FileUri)
+            .build();
     }
 
     /**
@@ -116,21 +151,22 @@ public class S3Utils {
      * @param fileUri
      * @return
      */
-    public static URL getPublicURL(URI fileUri) {
-        if (fileUri == null) {
-            return null;
-        }
-
-        if (S3Utils.S3_SCHEME.equals(fileUri.getScheme())) {
-            StringBuilder sb = new StringBuilder("https://")
-                .append(fileUri.getHost())
-                .append(".s3.amazonaws.com")
-                .append(fileUri.getPath());
+    public static URL getPublicURL(URI fileUri, Region region) {
+        S3Uri s3Uri = S3Utils.getS3URIFromURI(fileUri);
+        if (s3Uri != null) {
+            String bucket = s3Uri.bucket().orElseThrow(() -> new IllegalArgumentException("Missing bucket"));
+            String key = s3Uri.key().orElse("");
 
             try {
-                return new URL(sb.toString());
+                URI uri = new URI(
+                    "https",
+                    bucket + ".s3." + region.id() + ".amazonaws.com",
+                    "/" + key,
+                    null // query string
+                );
+                return uri.toURL();
             } catch(Exception ex) {
-                LOGGER.error(String.format("Could not create a public URL from S3 URI: %s", fileUri.toString()), ex);
+                LOGGER.error(String.format("Could not create a public S3 URL from S3 URI: %s", fileUri), ex);
                 return null;
             }
         }
@@ -138,12 +174,12 @@ public class S3Utils {
         return null;
     }
 
-    public static String getFilename(AmazonS3URI s3Uri) {
+    public static String getFilename(S3Uri s3Uri) {
         if (s3Uri == null) {
             return null;
         }
 
-        String key = s3Uri.getKey();
+        String key = s3Uri.key().orElse(null);
         if (key == null || key.isEmpty() || key.endsWith("/")) {
             return null;
         }
@@ -153,12 +189,12 @@ public class S3Utils {
         return lastSlashIdx < 0 ? key : key.substring(lastSlashIdx + 1);
     }
 
-    public static String getDirectoryName(AmazonS3URI s3Uri) {
+    public static String getDirectoryName(S3Uri s3Uri) {
         if (s3Uri == null) {
             return null;
         }
 
-        String key = s3Uri.getKey();
+        String key = s3Uri.key().orElse(null);
         if (key == null || key.isEmpty()) {
             return null;
         }
@@ -183,12 +219,12 @@ public class S3Utils {
         return lastSlashIdx < 0 ? key : key.substring(lastSlashIdx + 1);
     }
 
-    public static AmazonS3URI getParentUri(AmazonS3URI s3Uri) {
+    public static S3Uri getParentUri(S3Uri s3Uri) {
         if (s3Uri == null) {
             return null;
         }
 
-        String key = s3Uri.getKey();
+        String key = s3Uri.key().orElse(null);
         if (key == null || key.isEmpty()) {
             return s3Uri;
         }
@@ -207,7 +243,7 @@ public class S3Utils {
             parentKey = key.substring(0, lastSlashIdx + 1);
         }
 
-        return S3Utils.getS3URI(s3Uri.getBucket(), parentKey);
+        return S3Utils.getS3URI(s3Uri.bucket().orElse(null), parentKey);
     }
 
     public static boolean isPattern(String str) {
@@ -252,23 +288,22 @@ public class S3Utils {
         return Pattern.compile(patternSb.toString());
     }
 
-    public static boolean isPublic(AccessControlList acl) {
-        List<Grant> grants = acl.getGrantsAsList();
-        for (Grant grant : grants) {
-            // Find the grant for all users (the Public grant)
-            if (GroupGrantee.AllUsers.equals(grant.getGrantee())) {
-
-                // Check if it's readable
-                Permission grantPermission = grant.getPermission();
-                boolean canRead = grantPermission == Permission.Read ||
-                        grantPermission == Permission.FullControl;
-
-                if (canRead) {
-                    return true;
+    public static boolean isPublic(List<Grant> acl) {
+        for (Grant grant : acl) {
+            Grantee grantee = grant.grantee();
+            if (grantee != null && grantee.type() == Type.GROUP &&
+                "http://acs.amazonaws.com/groups/global/AllUsers".equals(grantee.uri())) {
+                Permission permission = grant.permission();
+                if (permission == Permission.READ || permission == Permission.FULL_CONTROL) {
+                    return true; // Public read access via ACL
                 }
             }
         }
 
         return false;
+    }
+
+    public static Region getCurrentRegion() {
+        return new DefaultAwsRegionProviderChain().getRegion();
     }
 }

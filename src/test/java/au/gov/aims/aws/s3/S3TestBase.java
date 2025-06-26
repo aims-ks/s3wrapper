@@ -18,12 +18,12 @@
  */
 package au.gov.aims.aws.s3;
 
-import au.gov.aims.aws.s3.entity.S3Client;
+import au.gov.aims.aws.s3.entity.S3ClientWrapper;
 import au.gov.aims.aws.s3.entity.S3List;
 import au.gov.aims.aws.s3.manager.BucketManager;
 import au.gov.aims.aws.s3.manager.UploadManager;
-import com.amazonaws.services.s3.AmazonS3URI;
 import org.apache.log4j.Logger;
+import software.amazon.awssdk.services.s3.S3Uri;
 
 import java.io.File;
 import java.net.URL;
@@ -36,11 +36,11 @@ public class S3TestBase {
     //     src/resources/bucket_files
     protected static final String S3_BUCKET_ID = "aims-junit-test-s3wrapper";
 
-    protected S3Client openS3Client() throws Exception {
-        return S3Client.parse(PropertiesLoader.load("aws-credentials.properties"));
+    protected S3ClientWrapper openS3Client() throws Exception {
+        return S3ClientWrapper.parse(PropertiesLoader.load("aws-credentials.properties"));
     }
 
-    protected void setupBucket(S3Client client) throws Exception {
+    protected void setupBucket(S3ClientWrapper client) throws Exception {
         // Create the S3 JUnit test bucket, if it doesn't already exist
         try {
             BucketManager.create(client, S3TestBase.S3_BUCKET_ID);
@@ -50,7 +50,7 @@ public class S3TestBase {
 
             File bucketFilesFolder = new File(bucketFilesUrl.toURI());
             S3List uploadedFiles = new S3List();
-            AmazonS3URI bucketURI = S3Utils.getS3URI(S3_BUCKET_ID);
+            S3Uri bucketURI = S3Utils.getS3URI(S3_BUCKET_ID);
             for (File bucketFilesFile : bucketFilesFolder.listFiles()) {
                 uploadedFiles.putAll(UploadManager.upload(client, bucketFilesFile, bucketURI));
             }

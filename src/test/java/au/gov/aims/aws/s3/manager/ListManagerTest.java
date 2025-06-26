@@ -20,13 +20,13 @@ package au.gov.aims.aws.s3.manager;
 
 import au.gov.aims.aws.s3.S3TestBase;
 import au.gov.aims.aws.s3.S3Utils;
-import au.gov.aims.aws.s3.entity.S3Client;
+import au.gov.aims.aws.s3.entity.S3ClientWrapper;
 import au.gov.aims.aws.s3.entity.S3File;
 import au.gov.aims.aws.s3.entity.S3List;
-import com.amazonaws.services.s3.AmazonS3URI;
 import org.apache.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Test;
+import software.amazon.awssdk.services.s3.S3Uri;
 
 import java.util.Map;
 
@@ -40,10 +40,10 @@ public class ListManagerTest extends S3TestBase {
      */
     @Test
     public void testLs() throws Exception {
-        try (S3Client client = super.openS3Client()) {
+        try (S3ClientWrapper client = super.openS3Client()) {
             super.setupBucket(client);
 
-            AmazonS3URI s3Uri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "/bin/");
+            S3Uri s3Uri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "/bin/");
             S3List s3List = ListManager.ls(client, s3Uri);
             LOGGER.info(s3List);
 

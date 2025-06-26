@@ -21,13 +21,13 @@ package au.gov.aims.aws.s3.manager;
 import au.gov.aims.aws.s3.Md5;
 import au.gov.aims.aws.s3.S3TestBase;
 import au.gov.aims.aws.s3.S3Utils;
-import au.gov.aims.aws.s3.entity.S3Client;
+import au.gov.aims.aws.s3.entity.S3ClientWrapper;
 import au.gov.aims.aws.s3.entity.S3File;
 import au.gov.aims.aws.s3.entity.S3List;
-import com.amazonaws.services.s3.AmazonS3URI;
 import org.apache.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Test;
+import software.amazon.awssdk.services.s3.S3Uri;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -45,10 +45,10 @@ public class DownloadManagerTest extends S3TestBase {
      */
     @Test(expected = FileNotFoundException.class)
     public void testDownloadFileNotFound() throws Exception {
-        try (S3Client client = super.openS3Client()) {
+        try (S3ClientWrapper client = super.openS3Client()) {
             super.setupBucket(client);
 
-            AmazonS3URI s3Uri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "/none-existing-folder/nope/this-file-does-not-exists.png");
+            S3Uri s3Uri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "/none-existing-folder/nope/this-file-does-not-exists.png");
             DownloadManager.download(client, s3Uri, new File("/tmp/s3wrapper"));
 
             Assert.fail("Downloading a non existing file must trigger an FileNotFoundException.");
@@ -66,10 +66,10 @@ public class DownloadManagerTest extends S3TestBase {
         File origFile = new File(origFileUrl.toURI());
         File destinationFile = new File("/tmp/s3wrapper/random_100.bin");
 
-        try (S3Client client = super.openS3Client()) {
+        try (S3ClientWrapper client = super.openS3Client()) {
             super.setupBucket(client);
 
-            AmazonS3URI s3Uri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "/bin/random_100.bin");
+            S3Uri s3Uri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "/bin/random_100.bin");
             S3List s3List = DownloadManager.download(client, s3Uri, destinationFile);
             LOGGER.info(s3List);
 
@@ -83,13 +83,14 @@ public class DownloadManagerTest extends S3TestBase {
 
             // Get the file from the map
             S3File file = files.get("bin/random_100.bin");
-            Assert.assertEquals("Missing file 'bin/random_100.bin'.", "bin/random_100.bin", file.getS3Uri().getKey());
+            Assert.assertEquals("Missing file 'bin/random_100.bin'.", "bin/random_100.bin",
+                    file.getS3Uri().key().orElse(null));
             Assert.assertTrue("The destination file was not created.", destinationFile.exists());
 
             // Check file size
             Long origFileSize = origFile.length();
             Long destinationFileSize = destinationFile.length();
-            Long metadataFileSize = file.getFileSize();
+            Long metadataFileSize = file.getFileSize(client);
 
             Assert.assertEquals("The file size in the file metadata differ from the original file size.", metadataFileSize, origFileSize);
             Assert.assertEquals("The downloaded file size differ from the original file size.", destinationFileSize, origFileSize);
@@ -100,7 +101,7 @@ public class DownloadManagerTest extends S3TestBase {
             Assert.assertEquals("The downloaded file md5sum doesn't match original file.", md5sumOrig, md5sumDownloaded);
 
             // Check file lastModified date
-            Long downloadedLastModified = file.getLastModified();
+            Long downloadedLastModified = file.getLastModified(client);
             Assert.assertNotNull("The downloaded file lastModified metadata attribute is null.", downloadedLastModified);
             Assert.assertEquals("The downloaded file lastModified metadata attribute do not actual file lastModified attribute.",
                     downloadedLastModified.longValue(), destinationFile.lastModified());
@@ -116,10 +117,10 @@ public class DownloadManagerTest extends S3TestBase {
     public void testDownloadFilesPattern() throws Exception {
         File destinationFolder = new File("/tmp/s3wrapper/random_star");
 
-        try (S3Client client = super.openS3Client()) {
+        try (S3ClientWrapper client = super.openS3Client()) {
             super.setupBucket(client);
 
-            AmazonS3URI s3Uri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "/bin/random_*.bin");
+            S3Uri s3Uri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "/bin/random_*.bin");
             S3List s3List = DownloadManager.download(client, s3Uri, destinationFolder);
             LOGGER.info(s3List);
 

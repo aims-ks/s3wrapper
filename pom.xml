@@ -6,13 +6,15 @@
 
     <groupId>au.gov.aims</groupId>
     <artifactId>s3wrapper</artifactId>
-    <version>0.4.1</version>
+    <version>2.0.0</version>
     <packaging>jar</packaging>
     <name>S3 Wrapper</name>
     <description>S3 Wrapper made to simplify the Amazon S3 API.</description>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <aws.sdk.version>2.31.69</aws.sdk.version>
 
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
@@ -46,17 +48,29 @@
             <version>2.11.0</version>
         </dependency>
 
-        <!-- AWS Java API - This packages have a LOT of dependencies... -->
+        <!-- AWS Java API v2 - Pull only required modules -->
         <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>aws-java-sdk</artifactId>
-            <version>1.12.131</version>
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>s3</artifactId>
+          <version>${aws.sdk.version}</version>
+        </dependency>
+        <dependency>
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>s3-transfer-manager</artifactId>
+          <version>${aws.sdk.version}</version>
         </dependency>
 
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j2-impl</artifactId>
+            <version>2.25.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

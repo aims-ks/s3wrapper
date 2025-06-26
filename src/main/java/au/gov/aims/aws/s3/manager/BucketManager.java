@@ -19,20 +19,23 @@
 package au.gov.aims.aws.s3.manager;
 
 import au.gov.aims.aws.s3.entity.S3Bucket;
-import au.gov.aims.aws.s3.entity.S3Client;
-import com.amazonaws.services.s3.AmazonS3URI;
-import com.amazonaws.services.s3.model.Bucket;
+import au.gov.aims.aws.s3.entity.S3ClientWrapper;
 import org.apache.log4j.Logger;
+import software.amazon.awssdk.services.s3.S3Uri;
+import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
+import software.amazon.awssdk.services.s3.model.CreateBucketResponse;
+import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 public class BucketManager {
     private static final Logger LOGGER = Logger.getLogger(BucketManager.class);
     private static final int S3_ATTEMPT = 5;
 
-    public static S3Bucket create(S3Client client, AmazonS3URI s3Uri) throws Exception {
-        return BucketManager.create(client, s3Uri.getBucket());
+    public static S3Bucket create(S3ClientWrapper client, S3Uri s3Uri) throws Exception {
+        return BucketManager.create(client, s3Uri.bucket().orElse(null));
     }
 
-    public static S3Bucket create(S3Client client, String bucketId) throws Exception {
+    public static S3Bucket create(S3ClientWrapper client, String bucketId) throws Exception {
         // Remove trailing white spaces
         bucketId = bucketId == null ? null : bucketId.trim();
 
@@ -40,53 +43,72 @@ public class BucketManager {
             throw new IllegalArgumentException("Can not create bucket: Bucket ID is null or empty");
         }
 
-        if (BucketManager.doesBucketExist(client, bucketId)) {
+        if (BucketManager.bucketExists(client, bucketId)) {
             throw new BucketAlreadyExistsException(String.format("Bucket %s already exists.", bucketId));
         }
 
 
         long startTime = System.currentTimeMillis();
 
-        Bucket bucket = BucketManager.createS3Bucket(client, bucketId);
+        BucketManager.createS3Bucket(client, bucketId);
 
         long endTime = System.currentTimeMillis();
 
 
         S3Bucket s3Bucket = new S3Bucket(bucketId);
         s3Bucket.setExecutionTime(endTime - startTime);
-        s3Bucket.setCreationTime(bucket.getCreationDate());
 
         return s3Bucket;
     }
 
-    public static boolean doesBucketExist(S3Client client, String bucketId) {
+    public static boolean bucketExists(S3ClientWrapper client, String bucket) {
+        HeadBucketRequest request = HeadBucketRequest.builder()
+                .bucket(bucket)
+                .build();
+
         for (int i=0; i<S3_ATTEMPT; i++) {
             try {
-                return client.getS3().doesBucketExistV2(bucketId);
+                return BucketManager.internalBucketExists(client, request);
             } catch(Throwable ex) {
                 LOGGER.warn(String.format("Error occurred while checking the existence of a bucket on S3: %s. Attempting to reconnect.",
-                        bucketId), ex);
+                        bucket), ex);
                 client.reconnect();
             }
         }
 
         // Try for a last time. If it still doesn't work, it will throw an exception.
-        return client.getS3().doesBucketExistV2(bucketId);
+        return BucketManager.internalBucketExists(client, request);
     }
 
-    private static Bucket createS3Bucket(S3Client client, String bucketId) {
+    private static boolean internalBucketExists(S3ClientWrapper client, HeadBucketRequest request) {
+        try {
+            client.getS3Client().headBucket(request);
+            return true;
+        } catch (S3Exception ex) {
+            if (ex.statusCode() == 404) {
+                return false;
+            }
+            throw ex;
+        }
+    }
+
+    private static CreateBucketResponse createS3Bucket(S3ClientWrapper client, String bucket) {
+        CreateBucketRequest request = CreateBucketRequest.builder()
+            .bucket(bucket)
+            .build();
+
         for (int i=0; i<S3_ATTEMPT; i++) {
             try {
-                return client.getS3().createBucket(bucketId);
+                return client.getS3Client().createBucket(request);
             } catch(Throwable ex) {
                 LOGGER.warn(String.format("Error occurred while creating a new bucket on S3: %s. Attempting to reconnect.",
-                        bucketId), ex);
+                        bucket), ex);
                 client.reconnect();
             }
         }
 
         // Try for a last time. If it still doesn't work, it will throw an exception.
-        return client.getS3().createBucket(bucketId);
+        return client.getS3Client().createBucket(request);
     }
 
     public static class BucketAlreadyExistsException extends Exception {

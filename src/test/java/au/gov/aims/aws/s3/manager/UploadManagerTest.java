@@ -21,13 +21,13 @@ package au.gov.aims.aws.s3.manager;
 import au.gov.aims.aws.s3.Md5;
 import au.gov.aims.aws.s3.S3TestBase;
 import au.gov.aims.aws.s3.S3Utils;
-import au.gov.aims.aws.s3.entity.S3Client;
+import au.gov.aims.aws.s3.entity.S3ClientWrapper;
 import au.gov.aims.aws.s3.entity.S3File;
 import au.gov.aims.aws.s3.entity.S3List;
-import com.amazonaws.services.s3.AmazonS3URI;
 import org.apache.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Test;
+import software.amazon.awssdk.services.s3.S3Uri;
 
 import java.io.File;
 import java.net.URL;
@@ -45,9 +45,9 @@ public class UploadManagerTest extends S3TestBase {
         URL origFileUrl = UploadManagerTest.class.getClassLoader().getResource("bucket_files/bin/random_1024.bin");
         File origFile = new File(origFileUrl.toURI());
         File tempFile = File. createTempFile("s3mockup_", "_random_1024.bin");
-        AmazonS3URI destinationUri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "/bin/random_1024.bin");
+        S3Uri destinationUri = S3Utils.getS3URI(S3TestBase.S3_BUCKET_ID, "/bin/random_1024.bin");
 
-        try (S3Client client = super.openS3Client()) {
+        try (S3ClientWrapper client = super.openS3Client()) {
             super.setupBucket(client);
 
             S3List uploadS3List = UploadManager.upload(client, origFile, destinationUri);
@@ -56,8 +56,8 @@ public class UploadManagerTest extends S3TestBase {
             // Verify upload
             Assert.assertNotNull("The upload response is null.", uploadS3List);
 
-            // Verify if the file is on S3
-            S3List checkS3List = ListManager.ls(client, destinationUri);
+            // Verify if the file is on S3 (fetch the list of file with their metadata)
+            S3List checkS3List = ListManager.ls(client, destinationUri, false);
             LOGGER.info(checkS3List);
 
             Assert.assertNotNull("The file info response is null.", checkS3List);
@@ -65,8 +65,10 @@ public class UploadManagerTest extends S3TestBase {
             // Get the file from the map
             S3File checkS3File = checkS3List.getFiles().get("bin/random_1024.bin");
             Assert.assertNotNull("The uploaded file is null", checkS3File);
-            Assert.assertEquals("The uploaded file key is wrong", "bin/random_1024.bin", checkS3File.getS3Uri().getKey());
-            Assert.assertEquals("The uploaded file size do not match the original", origFile.length(), checkS3File.getFileSize().longValue());
+            Assert.assertEquals("The uploaded file key is wrong", "bin/random_1024.bin",
+                    checkS3File.getS3Uri().key().orElse(null));
+            Assert.assertEquals("The uploaded file size do not match the original",
+                    origFile.length(), checkS3File.getFileSize(client).longValue());
 
 
             // Download the file
@@ -82,7 +84,7 @@ public class UploadManagerTest extends S3TestBase {
             Assert.assertEquals("The file md5sum doesn't match.", md5sumOrig, md5sumDownloaded);
 
             // Check last modified
-            long lastModifiedCheck = checkS3File.getLastModified();
+            long lastModifiedCheck = checkS3File.getLastModified(client);
             long lastModifiedDownloaded = tempFile.lastModified();
             Assert.assertEquals("The file last modified data doesn't match.", lastModifiedCheck, lastModifiedDownloaded);
         }
