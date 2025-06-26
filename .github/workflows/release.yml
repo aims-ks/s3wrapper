@@ -25,4 +25,4 @@ jobs:
         env:
           GITHUB_USERNAME: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn -B -e -DskipTests=true --settings maven-settings.xml deploy
+        run: mvn -B -e -DskipTests=true -Dhttps.protocols=TLSv1.2 --settings maven-settings.xml deploy
